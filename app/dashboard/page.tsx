@@ -1,8 +1,26 @@
 ﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/auth/LogoutButton";
-import { DashboardContent } from "@/components/dashboard/DashboardContent";
+import { IssueDashboard } from "@/components/issues/IssueDashboard";
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+const issueSelect = {
+  id: true,
+  title: true,
+  description: true,
+  steps_to_reproduce: true,
+  expected_result: true,
+  actual_result: true,
+  severity: true,
+  status: true,
+  created_by: true,
+  assigned_to: true,
+  created_at: true,
+  updated_at: true,
+  creator: { select: { id: true, username: true, email: true, role: true } },
+  assignee: { select: { id: true, username: true, email: true, role: true } }
+};
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -10,6 +28,20 @@ export default async function DashboardPage() {
   if (!user) {
     redirect("/login");
   }
+
+  const issues = await prisma.issue.findMany({
+    orderBy: { updated_at: "desc" },
+    take: 12,
+    select: issueSelect
+  });
+
+  const stats = {
+    open: await prisma.issue.count({ where: { status: "OPEN" } }),
+    inProgress: await prisma.issue.count({ where: { status: "IN_PROGRESS" } }),
+    resolved: await prisma.issue.count({ where: { status: { in: ["RESOLVED", "CLOSED"] } } }),
+    critical: await prisma.issue.count({ where: { severity: "CRITICAL" } }),
+    total: await prisma.issue.count()
+  };
 
   return (
     <main className="min-h-screen overflow-hidden bg-espresso text-ivory">
@@ -20,18 +52,13 @@ export default async function DashboardPage() {
           </Link>
           <div className="hidden items-center gap-6 text-sm text-beige md:flex">
             <a href="#dashboard" className="transition hover:text-ivory">Dashboard</a>
-            <a href="#report" className="transition hover:text-ivory">Report</a>
-            <a href="#test-cases" className="transition hover:text-ivory">Test Cases</a>
+            <Link href="/dashboard/issues/new" className="transition hover:text-ivory">Create Issue</Link>
             <a href="#analytics" className="transition hover:text-ivory">Analytics</a>
           </div>
           <LogoutButton />
         </nav>
       </header>
-      <DashboardContent
-        includeTopPadding
-        user={{ username: user.username, email: user.email }}
-      />
+      <IssueDashboard issues={issues} stats={stats} user={user} />
     </main>
   );
 }
-

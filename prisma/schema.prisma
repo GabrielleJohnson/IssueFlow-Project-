@@ -8,11 +8,33 @@ datasource db {
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  username      String
-  email         String   @unique
-  password_hash String
-  created_at    DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  username       String
+  email          String   @unique
+  password_hash  String
+  role           String   @default("TESTER")
+  created_at     DateTime @default(now())
+  createdIssues  Issue[]  @relation("CreatedIssues")
+  assignedIssues Issue[]  @relation("AssignedIssues")
 
   @@map("users")
+}
+
+model Issue {
+  id                 Int      @id @default(autoincrement())
+  title              String
+  description        String
+  steps_to_reproduce String
+  expected_result    String
+  actual_result      String
+  severity           String   @default("MEDIUM")
+  status             String   @default("OPEN")
+  created_by         Int
+  assigned_to        Int?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  creator            User     @relation("CreatedIssues", fields: [created_by], references: [id])
+  assignee           User?    @relation("AssignedIssues", fields: [assigned_to], references: [id])
+
+  @@map("issues")
 }
