@@ -1,17 +1,24 @@
 ﻿import Image from "next/image";
 import Link from "next/link";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import { DashboardContent } from "@/components/dashboard/DashboardContent";
 import { LandingAnimations } from "@/components/landing/LandingAnimations";
 import { severityBreakdown } from "@/data/mockData";
+import { getCurrentUser } from "@/lib/auth";
 
-const navItems = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Report", href: "#report" },
-  { label: "Test Cases", href: "#test-cases" },
-  { label: "Analytics", href: "#analytics" }
+const guestNavItems = [
+  { label: "Home", href: "#hero" },
+  { label: "Features", href: "#test-cases" }
 ];
 
-export default function Home() {
+const userNavItems = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Issues", href: "/dashboard/issues" }
+];
+
+export default async function Home() {
+  const user = await getCurrentUser();
+
   return (
     <main className="min-h-screen overflow-hidden bg-espresso text-ivory">
       <LandingAnimations />
@@ -21,18 +28,27 @@ export default function Home() {
             Issue<span className="text-coral">Flow</span>
           </a>
           <div className="hidden items-center gap-6 text-sm text-beige md:flex">
-            {navItems.map((item) => (
+            {(user ? userNavItems : guestNavItems).map((item) => (
               <Link key={item.label} href={item.href} className="transition hover:text-ivory">
                 {item.label}
               </Link>
             ))}
           </div>
-          <Link
-            href="/login"
-            className="rounded-full border border-coral/50 px-4 py-2 text-sm font-semibold text-ivory shadow-glow transition hover:bg-coral hover:text-espresso"
-          >
-            Log In
-          </Link>
+          {user ? (
+            <LogoutButton />
+          ) : (
+            <div className="flex items-center gap-3">
+              <Link href="/login" className="hidden text-sm font-semibold text-beige transition hover:text-ivory sm:inline-flex">
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-full border border-coral/50 px-4 py-2 text-sm font-semibold text-ivory shadow-glow transition hover:bg-coral hover:text-espresso"
+              >
+                Register
+              </Link>
+            </div>
+          )}
         </nav>
       </header>
 
@@ -60,7 +76,7 @@ export default function Home() {
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/dashboard"
+                href={user ? "/dashboard" : "/login"}
                 className="rounded-full bg-coral px-6 py-3 text-center text-sm font-bold text-espresso shadow-glow transition hover:bg-amber"
               >
                 View Dashboard
