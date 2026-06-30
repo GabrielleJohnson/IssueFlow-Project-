@@ -1,8 +1,8 @@
 ﻿import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { LogoutButton } from "@/components/auth/LogoutButton";
-import { IssueForm } from "@/components/issues/IssueForm";
 import { SectionHeader } from "@/components/SectionHeader";
+import { TestCaseForm } from "@/components/test-cases/TestCaseForm";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -10,27 +10,26 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-const issueSelect = {
+const testCaseSelect = {
   id: true,
   title: true,
   description: true,
-  environment: true,
-  steps_to_reproduce: true,
+  feature_module: true,
+  preconditions: true,
+  test_steps: true,
   expected_result: true,
   actual_result: true,
-  severity: true,
   status: true,
+  priority: true,
   created_by: true,
-  assigned_to: true,
-  linked_test_case_id: true,
+  linked_issue_id: true,
   created_at: true,
   updated_at: true,
   creator: { select: { id: true, username: true, email: true, role: true } },
-  assignee: { select: { id: true, username: true, email: true, role: true } },
-  linkedTestCase: { select: { id: true, title: true, status: true, priority: true } }
+  linkedIssue: { select: { id: true, title: true, severity: true, status: true } }
 };
 
-export default async function EditIssuePage({ params }: PageProps) {
+export default async function EditTestCasePage({ params }: PageProps) {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -38,19 +37,18 @@ export default async function EditIssuePage({ params }: PageProps) {
   }
 
   const { id } = await params;
-  const issueId = Number(id);
+  const testCaseId = Number(id);
 
-  if (!Number.isInteger(issueId)) {
+  if (!Number.isInteger(testCaseId)) {
     notFound();
   }
 
-  const [issue, users, testCases] = await Promise.all([
-    prisma.issue.findUnique({ where: { id: issueId }, select: issueSelect }),
-    prisma.user.findMany({ orderBy: { username: "asc" }, select: { id: true, username: true, email: true, role: true } }),
-    prisma.testCase.findMany({ orderBy: { updated_at: "desc" }, where: { status: "FAILED" }, select: { id: true, title: true, status: true, priority: true } })
+  const [testCase, issues] = await Promise.all([
+    prisma.testCase.findUnique({ where: { id: testCaseId }, select: testCaseSelect }),
+    prisma.issue.findMany({ orderBy: { updated_at: "desc" }, select: { id: true, title: true, severity: true, status: true } })
   ]);
 
-  if (!issue) {
+  if (!testCase) {
     notFound();
   }
 
@@ -64,12 +62,12 @@ export default async function EditIssuePage({ params }: PageProps) {
       </header>
       <section className="mx-auto max-w-5xl px-5 pb-20 pt-32 sm:px-8">
         <SectionHeader
-          eyebrow={`Edit IF-${issue.id.toString().padStart(4, "0")}`}
-          title="Update bug report details."
-          description="Bug reports capture defects found while running QA scenarios."
+          eyebrow={`Edit TC-${testCase.id.toString().padStart(4, "0")}`}
+          title="Update QA scenario details."
+          description="Test cases define verification steps. Link a bug report only when the scenario exposes a defect."
         />
         <div className="mt-10">
-          <IssueForm mode="edit" issue={issue} users={users} testCases={testCases} />
+          <TestCaseForm mode="edit" testCase={testCase} issues={issues} />
         </div>
       </section>
     </main>

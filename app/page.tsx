@@ -13,7 +13,8 @@ const guestNavItems = [
 
 const userNavItems = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Issues", href: "/dashboard/issues" }
+  { label: "Issues", href: "/dashboard/issues" },
+  { label: "Test Cases", href: "/dashboard/test-cases" }
 ];
 
 export default async function Home() {
@@ -118,3 +119,5 @@ export default async function Home() {
     </main>
   );
 }
+
+

@@ -8,6 +8,7 @@ function issueSelect() {
     id: true,
     title: true,
     description: true,
+    environment: true,
     steps_to_reproduce: true,
     expected_result: true,
     actual_result: true,
@@ -15,10 +16,12 @@ function issueSelect() {
     status: true,
     created_by: true,
     assigned_to: true,
+    linked_test_case_id: true,
     created_at: true,
     updated_at: true,
     creator: { select: { id: true, username: true, email: true, role: true } },
-    assignee: { select: { id: true, username: true, email: true, role: true } }
+    assignee: { select: { id: true, username: true, email: true, role: true } },
+    linkedTestCase: { select: { id: true, title: true, status: true, priority: true } }
   };
 }
 
@@ -26,7 +29,7 @@ export async function GET() {
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "You must be logged in to view issues." }, { status: 401 });
+    return NextResponse.json({ error: "You must be logged in to view bug reports." }, { status: 401 });
   }
 
   const issues = await prisma.issue.findMany({
@@ -41,21 +44,23 @@ export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "You must be logged in to create issues." }, { status: 401 });
+    return NextResponse.json({ error: "You must be logged in to create bug reports." }, { status: 401 });
   }
 
   const body = await request.json().catch(() => null);
   const title = String(body?.title ?? "").trim();
   const description = String(body?.description ?? "").trim();
+  const environment = String(body?.environment ?? "").trim();
   const steps_to_reproduce = String(body?.steps_to_reproduce ?? "").trim();
   const expected_result = String(body?.expected_result ?? "").trim();
   const actual_result = String(body?.actual_result ?? "").trim();
   const severity = String(body?.severity ?? "MEDIUM");
   const status = String(body?.status ?? "OPEN");
   const assigned_to = body?.assigned_to ? Number(body.assigned_to) : null;
+  const linked_test_case_id = body?.linked_test_case_id ? Number(body.linked_test_case_id) : null;
 
-  if (!title || !description || !steps_to_reproduce || !expected_result || !actual_result) {
-    return NextResponse.json({ error: "All issue detail fields are required." }, { status: 400 });
+  if (!title || !description || !environment || !steps_to_reproduce || !expected_result || !actual_result) {
+    return NextResponse.json({ error: "Bug title, summary, environment, reproduction steps, expected result, and actual result are required." }, { status: 400 });
   }
 
   if (!isIssueSeverity(severity) || !isIssueStatus(status)) {
@@ -70,17 +75,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (linked_test_case_id) {
+    const linkedTestCase = await prisma.testCase.findUnique({ where: { id: linked_test_case_id } });
+
+    if (!linkedTestCase) {
+      return NextResponse.json({ error: "Linked failed test case was not found." }, { status: 400 });
+    }
+  }
+
   const issue = await prisma.issue.create({
     data: {
       title,
       description,
+      environment,
       steps_to_reproduce,
       expected_result,
       actual_result,
       severity,
       status,
       created_by: user.id,
-      assigned_to
+      assigned_to,
+      linked_test_case_id
     },
     select: issueSelect()
   });

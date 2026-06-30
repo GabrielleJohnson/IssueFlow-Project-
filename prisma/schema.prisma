@@ -8,33 +8,60 @@ datasource db {
 }
 
 model User {
-  id             Int      @id @default(autoincrement())
-  username       String
-  email          String   @unique
-  password_hash  String
-  role           String   @default("TESTER")
-  created_at     DateTime @default(now())
-  createdIssues  Issue[]  @relation("CreatedIssues")
-  assignedIssues Issue[]  @relation("AssignedIssues")
+  id               Int        @id @default(autoincrement())
+  username         String
+  email            String     @unique
+  password_hash    String
+  role             String     @default("TESTER")
+  created_at       DateTime   @default(now())
+  createdIssues    Issue[]    @relation("CreatedIssues")
+  assignedIssues   Issue[]    @relation("AssignedIssues")
+  createdTestCases TestCase[] @relation("CreatedTestCases")
 
   @@map("users")
 }
 
 model Issue {
-  id                 Int      @id @default(autoincrement())
-  title              String
-  description        String
-  steps_to_reproduce String
-  expected_result    String
-  actual_result      String
-  severity           String   @default("MEDIUM")
-  status             String   @default("OPEN")
-  created_by         Int
-  assigned_to        Int?
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-  creator            User     @relation("CreatedIssues", fields: [created_by], references: [id])
-  assignee           User?    @relation("AssignedIssues", fields: [assigned_to], references: [id])
+  id                   Int        @id @default(autoincrement())
+  title                String
+  description          String
+  environment          String     @default("Not specified")
+  steps_to_reproduce   String
+  expected_result      String
+  actual_result        String
+  severity             String     @default("MEDIUM")
+  status               String     @default("OPEN")
+  created_by           Int
+  assigned_to          Int?
+  linked_test_case_id  Int?
+  created_at           DateTime   @default(now())
+  updated_at           DateTime   @updatedAt
+  creator              User       @relation("CreatedIssues", fields: [created_by], references: [id])
+  assignee             User?      @relation("AssignedIssues", fields: [assigned_to], references: [id])
+  testCases            TestCase[] @relation("TestCaseLinkedIssue")
+  linkedTestCase       TestCase?  @relation("IssueFromFailedTest", fields: [linked_test_case_id], references: [id])
 
   @@map("issues")
+}
+
+model TestCase {
+  id                Int      @id @default(autoincrement())
+  title             String
+  description       String
+  feature_module    String   @default("General")
+  preconditions     String
+  test_steps        String
+  expected_result   String
+  actual_result     String
+  status            String   @default("NOT_RUN")
+  priority          String   @default("MEDIUM")
+  created_by        Int
+  linked_issue_id   Int?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  creator           User     @relation("CreatedTestCases", fields: [created_by], references: [id])
+  linkedIssue       Issue?   @relation("TestCaseLinkedIssue", fields: [linked_issue_id], references: [id])
+  createdBugReports Issue[]  @relation("IssueFromFailedTest")
+
+  @@map("test_cases")
 }

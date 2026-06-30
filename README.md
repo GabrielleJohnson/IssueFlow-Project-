@@ -1,6 +1,6 @@
 ﻿# IssueFlow
 
-IssueFlow is a QA-focused issue tracking platform for testers and small development teams. It includes a polished landing page, protected dashboard, local authentication, SQLite user storage, issue CRUD, and GSAP-powered section reveals.
+IssueFlow is a QA-focused issue tracking platform for testers and small development teams. It includes a polished landing page, protected dashboard, local authentication, SQLite user storage, issue CRUD, test case CRUD, and GSAP-powered section reveals.
 
 ## Local setup
 
@@ -49,6 +49,30 @@ Passwords are hashed with bcrypt before saving. Sessions are stored in an httpOn
 
 Issue creation uses the logged-in user as `created_by`. Delete is currently available to authenticated users, but the delete button and API helper are isolated so it can become ADMIN-only later.
 
+## Test case routes
+
+- `GET /api/test-cases`
+- `POST /api/test-cases`
+- `GET /api/test-cases/:id`
+- `PATCH /api/test-cases/:id`
+- `DELETE /api/test-cases/:id`
+
+Test case creation uses the logged-in user as `created_by`. Test cases can optionally link to one issue. Failed test case detail pages include a `Create Issue from Failed Test` CTA with query parameters ready for a future prefill workflow.
+
+## Dashboard pages
+
+- `/dashboard`
+- `/dashboard/issues`
+- `/dashboard/issues/new`
+- `/dashboard/issues/[id]`
+- `/dashboard/issues/[id]/edit`
+- `/dashboard/test-cases`
+- `/dashboard/test-cases/new`
+- `/dashboard/test-cases/[id]`
+- `/dashboard/test-cases/[id]/edit`
+
+All dashboard routes are protected and redirect unauthenticated users to `/login`.
+
 ## Database
 
 The Prisma schema is in `prisma/schema.prisma` and defines:
@@ -74,6 +98,22 @@ Issues:
 - `status` with `OPEN`, `IN_PROGRESS`, `IN_REVIEW`, `RESOLVED`, `CLOSED`
 - `created_by`
 - `assigned_to`
+- `created_at`
+- `updated_at`
+
+Test cases:
+
+- `id`
+- `title`
+- `description`
+- `preconditions`
+- `test_steps`
+- `expected_result`
+- `actual_result`
+- `status` with `NOT_RUN`, `PASSED`, `FAILED`, `BLOCKED`
+- `priority` with `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`
+- `created_by`
+- `linked_issue_id`
 - `created_at`
 - `updated_at`
 

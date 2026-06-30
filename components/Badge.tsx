@@ -23,8 +23,12 @@ const styles: Record<string, string> = {
   RESOLVED: "border-sage/40 bg-sage/15 text-sage",
   CLOSED: "border-bronze bg-espresso/80 text-beige",
   Pass: "border-sage/40 bg-sage/15 text-sage",
+  PASSED: "border-sage/40 bg-sage/15 text-sage",
   Fail: "border-ember/40 bg-ember/15 text-[#ff9aa2]",
+  FAILED: "border-ember/40 bg-ember/15 text-[#ff9aa2]",
   Blocked: "border-ochre/40 bg-ochre/15 text-[#edc174]",
+  BLOCKED: "border-ochre/40 bg-ochre/15 text-[#edc174]",
+  NOT_RUN: "border-bronze bg-espresso/80 text-beige",
   ADMIN: "border-coral/40 bg-coral/15 text-[#ffb29f]",
   TESTER: "border-amber/40 bg-amber/15 text-amber",
   DEVELOPER: "border-sage/40 bg-sage/15 text-sage"
