@@ -1,6 +1,6 @@
 ﻿# IssueFlow
 
-IssueFlow is a QA-focused issue tracking platform for testers and small development teams. It includes a polished landing page, protected dashboard, local authentication, SQLite user storage, issue CRUD, test case CRUD, and GSAP-powered section reveals.
+IssueFlow is a QA-focused issue tracking platform for testers and small development teams. It includes a polished landing page, protected dashboard, local authentication, SQLite user storage, issue CRUD, test case CRUD, local evidence uploads for bug reports, and GSAP-powered section reveals.
 
 ## Local setup
 
@@ -58,6 +58,34 @@ Issue creation uses the logged-in user as `created_by`. Delete is currently avai
 - `DELETE /api/test-cases/:id`
 
 Test case creation uses the logged-in user as `created_by`. Test cases can optionally link to one issue. Failed test case detail pages include a `Create Issue from Failed Test` CTA with query parameters ready for a future prefill workflow.
+
+
+## Evidence uploads
+
+Bug reports support local evidence files so testers can attach screenshots, GIFs, PDFs, and other reproduction context for developers.
+
+Supported file types:
+
+- `.png`
+- `.jpg`
+- `.jpeg`
+- `.gif`
+- `.pdf`
+
+Limits and storage:
+
+- Maximum file size is 10MB per file.
+- Files are stored locally under `uploads/issues/{issue_id}/`.
+- The `uploads/` folder is ignored by git so local evidence files are not committed.
+- Evidence can be uploaded while creating/editing a bug report or from the bug report detail page.
+- Any authenticated user can view evidence. Uploaders can delete their own files; `ADMIN` remains the future override for role-based deletion.
+
+Evidence API routes:
+
+- `GET /api/issues/:id/attachments`
+- `POST /api/issues/:id/attachments`
+- `GET /api/attachments/:id`
+- `DELETE /api/attachments/:id`
 
 ## Dashboard pages
 
@@ -117,6 +145,18 @@ Test cases:
 - `created_at`
 - `updated_at`
 
+
+Attachments:
+
+- `id`
+- `filename`
+- `original_name`
+- `filepath`
+- `mimetype`
+- `filesize`
+- `uploaded_by`
+- `issue_id`
+- `created_at`
 This project uses SQLite for local development. The generated database file `prisma/dev.db` is ignored by git.
 
 ## Prisma notes
@@ -136,3 +176,5 @@ npm.cmd run db:init
 ```
 
 That command creates or upgrades the local SQLite tables expected by the Prisma client.
+
+

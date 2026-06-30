@@ -8,38 +8,40 @@ datasource db {
 }
 
 model User {
-  id               Int        @id @default(autoincrement())
+  id               Int          @id @default(autoincrement())
   username         String
-  email            String     @unique
+  email            String       @unique
   password_hash    String
-  role             String     @default("TESTER")
-  created_at       DateTime   @default(now())
-  createdIssues    Issue[]    @relation("CreatedIssues")
-  assignedIssues   Issue[]    @relation("AssignedIssues")
-  createdTestCases TestCase[] @relation("CreatedTestCases")
+  role             String       @default("TESTER")
+  created_at       DateTime     @default(now())
+  createdIssues    Issue[]      @relation("CreatedIssues")
+  assignedIssues   Issue[]      @relation("AssignedIssues")
+  createdTestCases TestCase[]   @relation("CreatedTestCases")
+  attachments      Attachment[] @relation("UploadedAttachments")
 
   @@map("users")
 }
 
 model Issue {
-  id                   Int        @id @default(autoincrement())
-  title                String
-  description          String
-  environment          String     @default("Not specified")
-  steps_to_reproduce   String
-  expected_result      String
-  actual_result        String
-  severity             String     @default("MEDIUM")
-  status               String     @default("OPEN")
-  created_by           Int
-  assigned_to          Int?
-  linked_test_case_id  Int?
-  created_at           DateTime   @default(now())
-  updated_at           DateTime   @updatedAt
-  creator              User       @relation("CreatedIssues", fields: [created_by], references: [id])
-  assignee             User?      @relation("AssignedIssues", fields: [assigned_to], references: [id])
-  testCases            TestCase[] @relation("TestCaseLinkedIssue")
-  linkedTestCase       TestCase?  @relation("IssueFromFailedTest", fields: [linked_test_case_id], references: [id])
+  id                  Int          @id @default(autoincrement())
+  title               String
+  description         String
+  environment         String       @default("Not specified")
+  steps_to_reproduce  String
+  expected_result     String
+  actual_result       String
+  severity            String       @default("MEDIUM")
+  status              String       @default("OPEN")
+  created_by          Int
+  assigned_to         Int?
+  linked_test_case_id Int?
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updatedAt
+  creator             User         @relation("CreatedIssues", fields: [created_by], references: [id])
+  assignee            User?        @relation("AssignedIssues", fields: [assigned_to], references: [id])
+  testCases           TestCase[]   @relation("TestCaseLinkedIssue")
+  linkedTestCase      TestCase?    @relation("IssueFromFailedTest", fields: [linked_test_case_id], references: [id])
+  attachments         Attachment[]
 
   @@map("issues")
 }
@@ -64,4 +66,20 @@ model TestCase {
   createdBugReports Issue[]  @relation("IssueFromFailedTest")
 
   @@map("test_cases")
+}
+
+model Attachment {
+  id            Int      @id @default(autoincrement())
+  filename      String
+  original_name String
+  filepath      String
+  mimetype      String
+  filesize      Int
+  uploaded_by   Int
+  issue_id      Int
+  created_at    DateTime @default(now())
+  uploader      User     @relation("UploadedAttachments", fields: [uploaded_by], references: [id])
+  issue         Issue    @relation(fields: [issue_id], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
 }

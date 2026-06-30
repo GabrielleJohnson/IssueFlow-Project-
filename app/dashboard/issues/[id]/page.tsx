@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Badge } from "@/components/Badge";
 import { DeleteIssueButton } from "@/components/issues/DeleteIssueButton";
+import { EvidenceSection } from "@/components/issues/EvidenceSection";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getCurrentUser } from "@/lib/auth";
 import { formatEnumLabel } from "@/lib/issueOptions";
@@ -140,6 +141,8 @@ export default async function IssueDetailPage({ params }: PageProps) {
             )}
           </div>
         </div>
+        <EvidenceSection issueId={issue.id} currentUserId={user.id} currentUserRole={user.role} />
+
 
         <div className="mt-8 rounded-lg border border-bronze bg-clay p-5 shadow-card">
           <p className="mb-4 text-sm text-beige">Delete is intentionally isolated so it can be hidden or admin-gated later.</p>
@@ -149,3 +152,8 @@ export default async function IssueDetailPage({ params }: PageProps) {
     </main>
   );
 }
+
+
+
+
+

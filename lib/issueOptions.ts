@@ -44,3 +44,9 @@ export function canDeleteIssue(role?: string) {
 export function canDeleteTestCase(role?: string) {
   return role === "ADMIN" || role === "TESTER" || role === "DEVELOPER";
 }
+
+// Attachment delete rule for v0.2.0: uploaders can remove their own evidence; ADMIN remains the future override.
+export function canDeleteAttachment(uploadedBy: number, currentUserId?: number, role?: string) {
+  return uploadedBy === currentUserId || role === "ADMIN";
+}
+

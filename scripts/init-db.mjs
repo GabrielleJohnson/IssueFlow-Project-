@@ -5,8 +5,10 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dbPath = join(__dirname, "..", "prisma", "dev.db");
+const uploadsPath = join(__dirname, "..", "uploads", "issues");
 
 mkdirSync(dirname(dbPath), { recursive: true });
+mkdirSync(uploadsPath, { recursive: true });
 
 const db = new DatabaseSync(dbPath);
 
@@ -91,7 +93,25 @@ if (!columnExists("test_cases", "feature_module")) {
 db.exec(`
   CREATE INDEX IF NOT EXISTS test_cases_created_by_idx ON test_cases(created_by);
   CREATE INDEX IF NOT EXISTS test_cases_linked_issue_id_idx ON test_cases(linked_issue_id);
+
+  CREATE TABLE IF NOT EXISTS attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT NOT NULL,
+    original_name TEXT NOT NULL,
+    filepath TEXT NOT NULL,
+    mimetype TEXT NOT NULL,
+    filesize INTEGER NOT NULL,
+    uploaded_by INTEGER NOT NULL,
+    issue_id INTEGER NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE ON UPDATE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS attachments_uploaded_by_idx ON attachments(uploaded_by);
+  CREATE INDEX IF NOT EXISTS attachments_issue_id_idx ON attachments(issue_id);
 `);
 
 db.close();
 console.log(`IssueFlow SQLite database ready at ${dbPath}`);
+console.log(`IssueFlow uploads folder ready at ${uploadsPath}`);

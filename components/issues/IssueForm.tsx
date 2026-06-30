@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import { formatEnumLabel, issueSeverities, issueStatuses } from "@/lib/issueOptions";
 import type { IssueRecord, IssueUser, TestCaseRecord } from "@/lib/issueTypes";
 
@@ -15,11 +15,74 @@ type IssueFormProps = {
   prefill?: IssuePrefill;
 };
 
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+const ACCEPTED_EVIDENCE = ".png,.jpg,.jpeg,.gif,.pdf,image/png,image/jpeg,image/gif,application/pdf";
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  const kilobytes = bytes / 1024;
+
+  if (kilobytes < 1024) {
+    return `${kilobytes.toFixed(1)} KB`;
+  }
+
+  return `${(kilobytes / 1024).toFixed(1)} MB`;
+}
+
 export function IssueForm({ mode, issue, users, testCases, prefill }: IssueFormProps) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const isEdit = mode === "edit";
+
+  const selectedFileSummary = useMemo(() => {
+    if (selectedFiles.length === 0) {
+      return "Optional PNG, JPG, GIF, or PDF evidence up to 10MB each.";
+    }
+
+    return selectedFiles.map((file) => `${file.name} (${formatBytes(file.size)})`).join(", ");
+  }, [selectedFiles]);
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    const oversizedFile = files.find((file) => file.size > MAX_ATTACHMENT_SIZE);
+
+    setError("");
+
+    if (oversizedFile) {
+      setSelectedFiles([]);
+      setError(`${oversizedFile.name} is larger than 10MB.`);
+      return;
+    }
+
+    setSelectedFiles(files);
+  }
+
+  async function uploadEvidence(issueId: number) {
+    if (selectedFiles.length === 0) {
+      return true;
+    }
+
+    const evidenceData = new FormData();
+    selectedFiles.forEach((file) => evidenceData.append("files", file));
+
+    const response = await fetch(`/api/issues/${issueId}/attachments`, {
+      method: "POST",
+      body: evidenceData
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      setError(data.error ?? "The bug report was saved, but evidence upload failed. You can add evidence from the detail page.");
+      return false;
+    }
+
+    return true;
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,6 +114,14 @@ export function IssueForm({ mode, issue, users, testCases, prefill }: IssueFormP
     if (!response.ok) {
       setError(data.error ?? "Unable to save this bug report.");
       setIsSubmitting(false);
+      return;
+    }
+
+    const evidenceUploaded = await uploadEvidence(data.issue.id);
+
+    if (!evidenceUploaded) {
+      setIsSubmitting(false);
+      router.refresh();
       return;
     }
 
@@ -121,6 +192,15 @@ export function IssueForm({ mode, issue, users, testCases, prefill }: IssueFormP
         </select>
       </label>
 
+      <div className="sm:col-span-2 rounded-lg border border-dashed border-bronze bg-espresso/45 p-4">
+        <label>
+          <span className="mb-2 block text-sm font-semibold text-beige">Evidence files</span>
+          <input type="file" multiple accept={ACCEPTED_EVIDENCE} onChange={handleFileChange} className="field file:mr-4 file:rounded-full file:border-0 file:bg-coral file:px-4 file:py-2 file:text-sm file:font-bold file:text-espresso" />
+        </label>
+        <p className="mt-2 text-xs leading-5 text-beige">{selectedFileSummary}</p>
+        {isEdit && <p className="mt-1 text-xs text-beige">Existing evidence can be viewed or removed from the bug report detail page.</p>}
+      </div>
+
       {error && (
         <p className="rounded-lg border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-[#ff9aa2] sm:col-span-2">
           {error}
@@ -129,7 +209,7 @@ export function IssueForm({ mode, issue, users, testCases, prefill }: IssueFormP
 
       <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row">
         <button type="submit" disabled={isSubmitting} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso transition hover:bg-amber disabled:cursor-not-allowed disabled:opacity-65">
-          {isSubmitting ? "Saving..." : isEdit ? "Save Bug Report" : "Create Bug Report"}
+          {isSubmitting ? (selectedFiles.length > 0 ? "Saving and uploading..." : "Saving...") : isEdit ? "Save Bug Report" : "Create Bug Report"}
         </button>
         <button type="button" onClick={() => router.back()} className="rounded-full border border-bronze px-5 py-3 text-sm font-bold text-ivory transition hover:border-amber hover:text-amber">
           Cancel
@@ -138,3 +218,4 @@ export function IssueForm({ mode, issue, users, testCases, prefill }: IssueFormP
     </form>
   );
 }
+
