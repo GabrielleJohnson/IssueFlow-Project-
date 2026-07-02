@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { canDeleteTestCase, isTestCasePriority, isTestCaseStatus } from "@/lib/issueOptions";
+import { isTestCasePriority, isTestCaseStatus } from "@/lib/issueOptions";
+import { canDeleteTestCase, canEditTestCase, canViewIssue, canViewTestCase } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type Params = {
@@ -24,7 +25,7 @@ function testCaseSelect() {
     created_at: true,
     updated_at: true,
     creator: { select: { id: true, username: true, email: true, role: true } },
-    linkedIssue: { select: { id: true, title: true, severity: true, status: true } }
+    linkedIssue: { select: { id: true, title: true, severity: true, status: true, created_by: true, assigned_to: true } }
   };
 }
 
@@ -53,6 +54,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Test case not found." }, { status: 404 });
   }
 
+  if (!canViewTestCase(user, testCase)) {
+    return NextResponse.json({ error: "You do not have permission to view this test case." }, { status: 403 });
+  }
+
   return NextResponse.json({ testCase });
 }
 
@@ -69,10 +74,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Invalid test case id." }, { status: 400 });
   }
 
-  const existingTestCase = await prisma.testCase.findUnique({ where: { id: testCaseId } });
+  const existingTestCase = await prisma.testCase.findUnique({
+    where: { id: testCaseId },
+    include: { linkedIssue: true }
+  });
 
   if (!existingTestCase) {
     return NextResponse.json({ error: "Test case not found." }, { status: 404 });
+  }
+
+  if (!canEditTestCase(user, existingTestCase)) {
+    return NextResponse.json({ error: "You do not have permission to update this test case." }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);
@@ -89,6 +101,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     if (!linkedIssue) {
       return NextResponse.json({ error: "Linked bug report was not found." }, { status: 400 });
+    }
+
+    if (!canViewIssue(user, linkedIssue)) {
+      return NextResponse.json({ error: "You do not have permission to link that bug report." }, { status: 403 });
     }
   }
 
@@ -125,20 +141,20 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "You must be logged in to delete test cases." }, { status: 401 });
   }
 
-  if (!canDeleteTestCase(user.role)) {
-    return NextResponse.json({ error: "You do not have permission to delete test cases." }, { status: 403 });
-  }
-
   const testCaseId = await getTestCaseId(params);
 
   if (!testCaseId) {
     return NextResponse.json({ error: "Invalid test case id." }, { status: 400 });
   }
 
-  const existingTestCase = await prisma.testCase.findUnique({ where: { id: testCaseId } });
+  const existingTestCase = await prisma.testCase.findUnique({ where: { id: testCaseId }, include: { linkedIssue: true } });
 
   if (!existingTestCase) {
     return NextResponse.json({ error: "Test case not found." }, { status: 404 });
+  }
+
+  if (!canDeleteTestCase(user, existingTestCase)) {
+    return NextResponse.json({ error: "Only admins can delete test cases." }, { status: 403 });
   }
 
   await prisma.testCase.delete({ where: { id: testCaseId } });

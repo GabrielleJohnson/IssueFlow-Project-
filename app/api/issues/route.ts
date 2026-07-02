@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { isIssueSeverity, isIssueStatus } from "@/lib/issueOptions";
+import { canCreateIssue, issueWhereForUser } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 function issueSelect() {
@@ -33,6 +34,7 @@ export async function GET() {
   }
 
   const issues = await prisma.issue.findMany({
+    where: issueWhereForUser(user),
     orderBy: { updated_at: "desc" },
     select: issueSelect()
   });
@@ -45,6 +47,10 @@ export async function POST(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: "You must be logged in to create bug reports." }, { status: 401 });
+  }
+
+  if (!canCreateIssue(user)) {
+    return NextResponse.json({ error: "You do not have permission to create bug reports." }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);

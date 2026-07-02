@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { createStoredFilename, ensureIssueUploadDir, issueAttachmentRelativePath, validateAttachment } from "@/lib/attachments";
 import { getCurrentUser } from "@/lib/auth";
+import { canUploadEvidence, canViewEvidence } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type Params = {
@@ -41,10 +42,14 @@ export async function GET(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Invalid bug report id." }, { status: 400 });
   }
 
-  const issue = await prisma.issue.findUnique({ where: { id: issueId }, select: { id: true } });
+  const issue = await prisma.issue.findUnique({ where: { id: issueId }, select: { id: true, created_by: true, assigned_to: true } });
 
   if (!issue) {
     return NextResponse.json({ error: "Bug report not found." }, { status: 404 });
+  }
+
+  if (!canViewEvidence(user, issue)) {
+    return NextResponse.json({ error: "You do not have permission to view evidence for this bug report." }, { status: 403 });
   }
 
   const attachments = await prisma.attachment.findMany({
@@ -69,10 +74,14 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Invalid bug report id." }, { status: 400 });
   }
 
-  const issue = await prisma.issue.findUnique({ where: { id: issueId }, select: { id: true } });
+  const issue = await prisma.issue.findUnique({ where: { id: issueId }, select: { id: true, created_by: true, assigned_to: true } });
 
   if (!issue) {
     return NextResponse.json({ error: "Bug report not found." }, { status: 404 });
+  }
+
+  if (!canUploadEvidence(user, issue)) {
+    return NextResponse.json({ error: "You do not have permission to upload evidence for this bug report." }, { status: 403 });
   }
 
   const formData = await request.formData().catch(() => null);
@@ -116,4 +125,3 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   return NextResponse.json({ attachments: uploadedAttachments }, { status: 201 });
 }
-

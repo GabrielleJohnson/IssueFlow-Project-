@@ -1,6 +1,6 @@
 ﻿# IssueFlow
 
-IssueFlow is a QA-focused issue tracking platform for testers and small development teams. It includes a polished landing page, protected dashboard, local authentication, SQLite user storage, issue CRUD, test case CRUD, local evidence uploads for bug reports, and GSAP-powered section reveals.
+IssueFlow is a QA-focused issue tracking platform for testers and small development teams. It includes a polished landing page, protected dashboard, local authentication, SQLite user storage, issue CRUD, test case CRUD, local evidence uploads for bug reports, role-based access control, and GSAP-powered section reveals.
 
 ## Local setup
 
@@ -47,7 +47,7 @@ Passwords are hashed with bcrypt before saving. Sessions are stored in an httpOn
 - `PATCH /api/issues/:id`
 - `DELETE /api/issues/:id`
 
-Issue creation uses the logged-in user as `created_by`. Delete is currently available to authenticated users, but the delete button and API helper are isolated so it can become ADMIN-only later.
+Issue creation uses the logged-in user as `created_by`. Admins can edit/delete any bug report, testers can create and edit their own bug reports, and developers can view assigned/unassigned bug reports and update status only.
 
 ## Test case routes
 
@@ -57,7 +57,7 @@ Issue creation uses the logged-in user as `created_by`. Delete is currently avai
 - `PATCH /api/test-cases/:id`
 - `DELETE /api/test-cases/:id`
 
-Test case creation uses the logged-in user as `created_by`. Test cases can optionally link to one issue. Failed test case detail pages include a `Create Issue from Failed Test` CTA with query parameters ready for a future prefill workflow.
+Test case creation uses the logged-in user as `created_by`. Admins and testers can create/edit test cases. Only admins can delete test cases. Developers can view test cases linked to bug reports they can access.
 
 
 ## Evidence uploads
@@ -78,7 +78,7 @@ Limits and storage:
 - Files are stored locally under `uploads/issues/{issue_id}/`.
 - The `uploads/` folder is ignored by git so local evidence files are not committed.
 - Evidence can be uploaded while creating/editing a bug report or from the bug report detail page.
-- Any authenticated user can view evidence. Uploaders can delete their own files; `ADMIN` remains the future override for role-based deletion.
+- Admins can upload, view, and delete any evidence. Testers can upload evidence and delete files they uploaded. Developers can view evidence on assigned or unassigned bug reports.
 
 Evidence API routes:
 
@@ -86,6 +86,30 @@ Evidence API routes:
 - `POST /api/issues/:id/attachments`
 - `GET /api/attachments/:id`
 - `DELETE /api/attachments/:id`
+
+
+## Roles and permissions
+
+IssueFlow supports three roles:
+
+- `ADMIN`: can view/create/edit/delete all bug reports and test cases, upload/view/delete any evidence, manage user roles, and view analytics.
+- `TESTER`: can view bug reports, create bug reports, edit bug reports they created, upload evidence, delete evidence they uploaded, create/edit/view test cases, update test case run status, and create bug reports from failed tests.
+- `DEVELOPER`: can view assigned and unassigned bug reports, update bug report status, view linked test cases, and view evidence. Developers cannot delete bug reports, delete test cases, upload evidence, or manage users.
+
+Normal registration creates `TESTER` users. Users cannot self-select `ADMIN` during registration.
+
+## First admin setup
+
+Create or promote the first local admin with environment variables, then run the seed command:
+
+```powershell
+$env:ISSUEFLOW_ADMIN_USERNAME="Gabrielle"
+$env:ISSUEFLOW_ADMIN_EMAIL="you@example.com"
+$env:ISSUEFLOW_ADMIN_PASSWORD="change-this-password"
+npm.cmd run db:seed-admin
+```
+
+The seed script only uses values from your local environment. It does not hardcode admin credentials in the app.
 
 ## Dashboard pages
 
@@ -98,6 +122,7 @@ Evidence API routes:
 - `/dashboard/test-cases/new`
 - `/dashboard/test-cases/[id]`
 - `/dashboard/test-cases/[id]/edit`
+- `/dashboard/users` admin only
 
 All dashboard routes are protected and redirect unauthenticated users to `/login`.
 
@@ -167,6 +192,7 @@ Standard Prisma scripts are available:
 npm.cmd run db:generate
 npm.cmd run db:migrate
 npm.cmd run db:studio
+npm.cmd run db:seed-admin
 ```
 
 If Prisma migration commands fail on your Windows setup because of the schema engine, use:
@@ -176,5 +202,6 @@ npm.cmd run db:init
 ```
 
 That command creates or upgrades the local SQLite tables expected by the Prisma client.
+
 
 

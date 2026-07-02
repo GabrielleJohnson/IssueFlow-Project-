@@ -1,10 +1,11 @@
 ﻿import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Badge } from "@/components/Badge";
+import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { SectionHeader } from "@/components/SectionHeader";
 import { DeleteTestCaseButton } from "@/components/test-cases/DeleteTestCaseButton";
 import { getCurrentUser } from "@/lib/auth";
+import { canCreateIssue, canDeleteTestCase, canEditTestCase, canViewTestCase } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type PageProps = {
@@ -27,7 +28,7 @@ const testCaseSelect = {
   created_at: true,
   updated_at: true,
   creator: { select: { id: true, username: true, email: true, role: true } },
-  linkedIssue: { select: { id: true, title: true, severity: true, status: true } }
+  linkedIssue: { select: { id: true, title: true, severity: true, status: true, created_by: true, assigned_to: true } }
 };
 
 export default async function TestCaseDetailPage({ params }: PageProps) {
@@ -46,18 +47,13 @@ export default async function TestCaseDetailPage({ params }: PageProps) {
 
   const testCase = await prisma.testCase.findUnique({ where: { id: testCaseId }, select: testCaseSelect });
 
-  if (!testCase) {
+  if (!testCase || !canViewTestCase(user, testCase)) {
     notFound();
   }
 
   return (
     <main className="min-h-screen bg-espresso text-ivory">
-      <header className="fixed left-0 right-0 top-0 z-20 border-b border-bronze/70 bg-espresso/78 backdrop-blur-xl">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/dashboard" className="font-display text-xl font-bold tracking-wide text-ivory">Issue<span className="text-coral">Flow</span></Link>
-          <LogoutButton />
-        </nav>
-      </header>
+      <DashboardNav user={user} />
       <section className="mx-auto max-w-6xl px-5 pb-20 pt-32 sm:px-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <SectionHeader
@@ -66,7 +62,7 @@ export default async function TestCaseDetailPage({ params }: PageProps) {
             description={testCase.description}
           />
           <div className="flex flex-wrap gap-3">
-            <Link href={`/dashboard/test-cases/${testCase.id}/edit`} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso shadow-glow transition hover:bg-amber">Edit Test Case</Link>
+            {canEditTestCase(user, testCase) && <Link href={`/dashboard/test-cases/${testCase.id}/edit`} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso shadow-glow transition hover:bg-amber">Edit Test Case</Link>}
             <Link href="/dashboard/test-cases" className="rounded-full border border-bronze px-5 py-3 text-sm font-bold text-ivory transition hover:border-amber hover:text-amber">Back to Test Cases</Link>
           </div>
         </div>
@@ -78,7 +74,7 @@ export default async function TestCaseDetailPage({ params }: PageProps) {
           <article className="rounded-lg border border-bronze bg-clay p-4 shadow-card"><p className="text-sm text-beige">Linked bug report</p>{testCase.linkedIssue ? <Link className="mt-2 block font-semibold text-amber transition hover:text-coral" href={`/dashboard/issues/${testCase.linkedIssue.id}`}>IF-{testCase.linkedIssue.id.toString().padStart(4, "0")}</Link> : <p className="mt-2 font-semibold text-ivory">None</p>}</article>
         </div>
 
-        {testCase.status === "FAILED" && (
+        {testCase.status === "FAILED" && canCreateIssue(user) && (
           <div className="mt-8 rounded-lg border border-ember/40 bg-ember/15 p-5 shadow-card">
             <h2 className="font-display text-xl font-semibold text-ivory">Failed test can become a bug report</h2>
             <p className="mt-2 text-sm leading-6 text-beige">This opens a bug report form prefilled from the failed QA scenario.</p>
@@ -103,10 +99,12 @@ export default async function TestCaseDetailPage({ params }: PageProps) {
           ))}
         </div>
 
-        <div className="mt-8 rounded-lg border border-bronze bg-clay p-5 shadow-card">
-          <p className="mb-4 text-sm text-beige">Delete is isolated so it can be hidden or admin-gated later.</p>
-          <DeleteTestCaseButton testCaseId={testCase.id} />
-        </div>
+        {canDeleteTestCase(user, testCase) && (
+          <div className="mt-8 rounded-lg border border-bronze bg-clay p-5 shadow-card">
+            <p className="mb-4 text-sm text-beige">Admin-only destructive action.</p>
+            <DeleteTestCaseButton testCaseId={testCase.id} />
+          </div>
+        )}
       </section>
     </main>
   );

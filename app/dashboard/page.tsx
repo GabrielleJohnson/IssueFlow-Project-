@@ -1,8 +1,8 @@
-﻿import Link from "next/link";
-import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/auth/LogoutButton";
+﻿import { redirect } from "next/navigation";
+import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { IssueDashboard } from "@/components/issues/IssueDashboard";
 import { getCurrentUser } from "@/lib/auth";
+import { canViewAnalytics, isAdmin, isDeveloper, issueWhereForUser } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 const issueSelect = {
@@ -41,7 +41,7 @@ const testCaseSelect = {
   created_at: true,
   updated_at: true,
   creator: { select: { id: true, username: true, email: true, role: true } },
-  linkedIssue: { select: { id: true, title: true, severity: true, status: true } }
+  linkedIssue: { select: { id: true, title: true, severity: true, status: true, created_by: true, assigned_to: true } }
 };
 
 export default async function DashboardPage() {
@@ -51,44 +51,37 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const visibleIssueWhere = issueWhereForUser(user);
+  const visibleTestCaseWhere = isDeveloper(user) ? { linkedIssue: { is: { OR: [{ assigned_to: user.id }, { assigned_to: null }] } } } : {};
+  const evidenceWhere = isAdmin(user) ? {} : isDeveloper(user) ? { issue: visibleIssueWhere } : { uploaded_by: user.id };
+
   const [issues, testCases, stats] = await Promise.all([
-    prisma.issue.findMany({ orderBy: { updated_at: "desc" }, take: 12, select: issueSelect }),
-    prisma.testCase.findMany({ orderBy: { updated_at: "desc" }, take: 6, select: testCaseSelect }),
+    prisma.issue.findMany({ where: visibleIssueWhere, orderBy: { updated_at: "desc" }, take: 12, select: issueSelect }),
+    prisma.testCase.findMany({ where: visibleTestCaseWhere, orderBy: { updated_at: "desc" }, take: 6, select: testCaseSelect }),
     Promise.all([
-      prisma.issue.count({ where: { status: "OPEN" } }),
-      prisma.issue.count({ where: { status: "IN_PROGRESS" } }),
-      prisma.issue.count({ where: { status: { in: ["RESOLVED", "CLOSED"] } } }),
-      prisma.issue.count({ where: { severity: "CRITICAL" } }),
-      prisma.issue.count(),
-      prisma.testCase.count(),
-      prisma.testCase.count({ where: { status: "PASSED" } }),
-      prisma.testCase.count({ where: { status: "FAILED" } }),
-      prisma.testCase.count({ where: { status: "BLOCKED" } })
+      prisma.issue.count({ where: { ...visibleIssueWhere, status: "OPEN" } }),
+      prisma.issue.count({ where: { ...visibleIssueWhere, status: "IN_PROGRESS" } }),
+      prisma.issue.count({ where: { ...visibleIssueWhere, status: { in: ["RESOLVED", "CLOSED"] } } }),
+      prisma.issue.count({ where: { ...visibleIssueWhere, severity: "CRITICAL" } }),
+      prisma.issue.count({ where: visibleIssueWhere }),
+      prisma.testCase.count({ where: visibleTestCaseWhere }),
+      prisma.testCase.count({ where: { ...visibleTestCaseWhere, status: "PASSED" } }),
+      prisma.testCase.count({ where: { ...visibleTestCaseWhere, status: "FAILED" } }),
+      prisma.testCase.count({ where: { ...visibleTestCaseWhere, status: "BLOCKED" } }),
+      canViewAnalytics(user) ? prisma.user.count() : Promise.resolve(0),
+      prisma.attachment.count({ where: evidenceWhere })
     ])
   ]);
 
-  const [open, inProgress, resolved, critical, total, totalTestCases, passedTests, failedTests, blockedTests] = stats;
+  const [open, inProgress, resolved, critical, total, totalTestCases, passedTests, failedTests, blockedTests, totalUsers, evidenceCount] = stats;
 
   return (
     <main className="min-h-screen overflow-hidden bg-espresso text-ivory">
-      <header className="fixed left-0 right-0 top-0 z-20 border-b border-bronze/70 bg-espresso/78 backdrop-blur-xl">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/" className="font-display text-xl font-bold tracking-wide text-ivory">
-            Issue<span className="text-coral">Flow</span>
-          </Link>
-          <div className="hidden items-center gap-6 text-sm text-beige md:flex">
-            <a href="#dashboard" className="transition hover:text-ivory">Dashboard</a>
-            <Link href="/dashboard/issues" className="transition hover:text-ivory">Issues</Link>
-            <Link href="/dashboard/test-cases" className="transition hover:text-ivory">Test Cases</Link>
-            <a href="#analytics" className="transition hover:text-ivory">Analytics</a>
-          </div>
-          <LogoutButton />
-        </nav>
-      </header>
+      <DashboardNav user={user} />
       <IssueDashboard
         issues={issues}
         testCases={testCases}
-        stats={{ open, inProgress, resolved, critical, total, totalTestCases, passedTests, failedTests, blockedTests }}
+        stats={{ open, inProgress, resolved, critical, total, totalTestCases, passedTests, failedTests, blockedTests, totalUsers, evidenceCount }}
         user={user}
       />
     </main>

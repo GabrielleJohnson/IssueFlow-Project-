@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { attachmentAbsolutePath } from "@/lib/attachments";
 import { getCurrentUser } from "@/lib/auth";
-import { canDeleteAttachment } from "@/lib/issueOptions";
+import { canDeleteEvidence, canViewEvidence } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type Params = {
@@ -32,10 +32,17 @@ export async function GET(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Invalid evidence id." }, { status: 400 });
   }
 
-  const attachment = await prisma.attachment.findUnique({ where: { id: attachmentId } });
+  const attachment = await prisma.attachment.findUnique({
+    where: { id: attachmentId },
+    include: { issue: { select: { created_by: true, assigned_to: true } } }
+  });
 
   if (!attachment) {
     return NextResponse.json({ error: "Evidence file not found." }, { status: 404 });
+  }
+
+  if (!canViewEvidence(user, attachment.issue)) {
+    return NextResponse.json({ error: "You do not have permission to view this evidence file." }, { status: 403 });
   }
 
   try {
@@ -65,14 +72,17 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Invalid evidence id." }, { status: 400 });
   }
 
-  const attachment = await prisma.attachment.findUnique({ where: { id: attachmentId } });
+  const attachment = await prisma.attachment.findUnique({
+    where: { id: attachmentId },
+    include: { issue: { select: { created_by: true, assigned_to: true } } }
+  });
 
   if (!attachment) {
     return NextResponse.json({ error: "Evidence file not found." }, { status: 404 });
   }
 
-  if (!canDeleteAttachment(attachment.uploaded_by, user.id, user.role)) {
-    return NextResponse.json({ error: "Only the uploader can delete this evidence." }, { status: 403 });
+  if (!canDeleteEvidence(user, attachment)) {
+    return NextResponse.json({ error: "Only the uploader or an admin can delete this evidence." }, { status: 403 });
   }
 
   await unlink(attachmentAbsolutePath(attachment.filepath)).catch(() => undefined);
@@ -80,6 +90,3 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
   return NextResponse.json({ ok: true });
 }
-
-
-

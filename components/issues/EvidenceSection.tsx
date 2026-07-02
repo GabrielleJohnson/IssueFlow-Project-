@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import type { AttachmentRecord } from "@/lib/attachmentTypes";
-import { canDeleteAttachment } from "@/lib/issueOptions";
+import { canDeleteEvidence } from "@/lib/permissions";
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_EVIDENCE = ".png,.jpg,.jpeg,.gif,.pdf,image/png,image/jpeg,image/gif,application/pdf";
@@ -30,9 +30,10 @@ type EvidenceSectionProps = {
   issueId: number;
   currentUserId: number;
   currentUserRole: string;
+  canUpload: boolean;
 };
 
-export function EvidenceSection({ issueId, currentUserId, currentUserRole }: EvidenceSectionProps) {
+export function EvidenceSection({ issueId, currentUserId, currentUserRole, canUpload }: EvidenceSectionProps) {
   const [attachments, setAttachments] = useState<AttachmentRecord[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -157,19 +158,23 @@ export function EvidenceSection({ issueId, currentUserId, currentUserRole }: Evi
         </span>
       </div>
 
-      <form onSubmit={handleUpload} className="mt-5 rounded-lg border border-dashed border-bronze bg-espresso/55 p-4">
-        <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-bronze/70 bg-clay/50 px-4 py-6 text-center transition hover:border-coral">
-          <span className="text-sm font-bold text-ivory">Drop evidence here or choose files</span>
-          <span className="max-w-2xl text-xs leading-5 text-beige">{selectedFileSummary}</span>
-          <input type="file" multiple accept={ACCEPTED_EVIDENCE} onChange={handleFileChange} className="sr-only" />
-        </label>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <button type="submit" disabled={isUploading || selectedFiles.length === 0} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso transition hover:bg-amber disabled:cursor-not-allowed disabled:opacity-65">
-            {isUploading ? "Uploading evidence..." : "Upload Evidence"}
-          </button>
-          <p className="text-xs text-beige">Supported: PNG, JPG, JPEG, GIF, PDF. Max 10MB each.</p>
-        </div>
-      </form>
+      {canUpload ? (
+        <form onSubmit={handleUpload} className="mt-5 rounded-lg border border-dashed border-bronze bg-espresso/55 p-4">
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-bronze/70 bg-clay/50 px-4 py-6 text-center transition hover:border-coral">
+            <span className="text-sm font-bold text-ivory">Drop evidence here or choose files</span>
+            <span className="max-w-2xl text-xs leading-5 text-beige">{selectedFileSummary}</span>
+            <input type="file" multiple accept={ACCEPTED_EVIDENCE} onChange={handleFileChange} className="sr-only" />
+          </label>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button type="submit" disabled={isUploading || selectedFiles.length === 0} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso transition hover:bg-amber disabled:cursor-not-allowed disabled:opacity-65">
+              {isUploading ? "Uploading evidence..." : "Upload Evidence"}
+            </button>
+            <p className="text-xs text-beige">Supported: PNG, JPG, JPEG, GIF, PDF. Max 10MB each.</p>
+          </div>
+        </form>
+      ) : (
+        <p className="mt-5 rounded-lg border border-bronze bg-espresso/55 px-4 py-3 text-sm text-beige">Developers can view evidence, but uploads are reserved for QA testers and admins.</p>
+      )}
 
       {message && <p className="mt-4 rounded-lg border border-sage/40 bg-sage/15 px-4 py-3 text-sm font-semibold text-sage">{message}</p>}
       {error && <p className="mt-4 rounded-lg border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-[#ff9aa2]">{error}</p>}
@@ -181,7 +186,7 @@ export function EvidenceSection({ issueId, currentUserId, currentUserRole }: Evi
           <p className="text-sm text-beige">No evidence files have been attached yet.</p>
         ) : (
           attachments.map((attachment) => {
-            const canDelete = canDeleteAttachment(attachment.uploaded_by, currentUserId, currentUserRole);
+            const canDelete = canDeleteEvidence({ id: currentUserId, role: currentUserRole }, attachment);
 
             return (
               <article key={attachment.id} className="overflow-hidden rounded-lg border border-bronze bg-espresso/60 shadow-card">
@@ -218,6 +223,3 @@ export function EvidenceSection({ issueId, currentUserId, currentUserRole }: Evi
     </section>
   );
 }
-
-
-

@@ -10,6 +10,10 @@ export type IssueStatus = (typeof issueStatuses)[number];
 export type TestCaseStatus = (typeof testCaseStatuses)[number];
 export type TestCasePriority = (typeof testCasePriorities)[number];
 
+export function isUserRole(value: string): value is UserRole {
+  return userRoles.includes(value as UserRole);
+}
+
 export function isIssueSeverity(value: string): value is IssueSeverity {
   return issueSeverities.includes(value as IssueSeverity);
 }
@@ -34,19 +38,4 @@ export function formatEnumLabel(value: string) {
     .join(" ");
 }
 
-// Future role checks can centralize here, for example:
-// export function canDeleteIssue(role: UserRole) { return role === "ADMIN"; }
-export function canDeleteIssue(role?: string) {
-  return role === "ADMIN" || role === "TESTER" || role === "DEVELOPER";
-}
-
-// Future role gate: make destructive test-case actions ADMIN-only when dashboards split by role.
-export function canDeleteTestCase(role?: string) {
-  return role === "ADMIN" || role === "TESTER" || role === "DEVELOPER";
-}
-
-// Attachment delete rule for v0.2.0: uploaders can remove their own evidence; ADMIN remains the future override.
-export function canDeleteAttachment(uploadedBy: number, currentUserId?: number, role?: string) {
-  return uploadedBy === currentUserId || role === "ADMIN";
-}
 

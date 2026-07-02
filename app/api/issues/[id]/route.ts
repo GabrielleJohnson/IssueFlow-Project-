@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { canDeleteIssue, isIssueSeverity, isIssueStatus } from "@/lib/issueOptions";
+import { isIssueSeverity, isIssueStatus } from "@/lib/issueOptions";
+import { canDeleteIssue, canEditIssue, canUpdateIssueStatus, canViewIssue, issueStatusOnlyPayload } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type Params = {
@@ -54,6 +55,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Bug report not found." }, { status: 404 });
   }
 
+  if (!canViewIssue(user, issue)) {
+    return NextResponse.json({ error: "You do not have permission to view this bug report." }, { status: 403 });
+  }
+
   return NextResponse.json({ issue });
 }
 
@@ -76,14 +81,37 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Bug report not found." }, { status: 404 });
   }
 
-  const body = await request.json().catch(() => null);
-  const severity = String(body?.severity ?? existingIssue.severity);
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const status = String(body?.status ?? existingIssue.status);
+
+  if (!isIssueStatus(status)) {
+    return NextResponse.json({ error: "Invalid status value." }, { status: 400 });
+  }
+
+  if (issueStatusOnlyPayload(body)) {
+    if (!canUpdateIssueStatus(user, existingIssue)) {
+      return NextResponse.json({ error: "You do not have permission to update this bug report status." }, { status: 403 });
+    }
+
+    const issue = await prisma.issue.update({
+      where: { id: issueId },
+      data: { status },
+      select: issueSelect()
+    });
+
+    return NextResponse.json({ issue });
+  }
+
+  if (!canEditIssue(user, existingIssue)) {
+    return NextResponse.json({ error: "You do not have permission to edit this bug report." }, { status: 403 });
+  }
+
+  const severity = String(body?.severity ?? existingIssue.severity);
   const assigned_to = body?.assigned_to ? Number(body.assigned_to) : null;
   const linked_test_case_id = body?.linked_test_case_id ? Number(body.linked_test_case_id) : null;
 
-  if (!isIssueSeverity(severity) || !isIssueStatus(status)) {
-    return NextResponse.json({ error: "Invalid severity or status value." }, { status: 400 });
+  if (!isIssueSeverity(severity)) {
+    return NextResponse.json({ error: "Invalid severity value." }, { status: 400 });
   }
 
   if (assigned_to) {
@@ -135,10 +163,6 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "You must be logged in to delete bug reports." }, { status: 401 });
   }
 
-  if (!canDeleteIssue(user.role)) {
-    return NextResponse.json({ error: "You do not have permission to delete bug reports." }, { status: 403 });
-  }
-
   const issueId = await getIssueId(params);
 
   if (!issueId) {
@@ -149,6 +173,10 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
   if (!existingIssue) {
     return NextResponse.json({ error: "Bug report not found." }, { status: 404 });
+  }
+
+  if (!canDeleteIssue(user, existingIssue)) {
+    return NextResponse.json({ error: "Only admins can delete bug reports." }, { status: 403 });
   }
 
   await prisma.issue.delete({ where: { id: issueId } });

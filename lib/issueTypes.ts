@@ -61,4 +61,8 @@ export type IssueStats = {
   passedTests: number;
   failedTests: number;
   blockedTests: number;
+  totalUsers: number;
+  evidenceCount: number;
 };
+
+

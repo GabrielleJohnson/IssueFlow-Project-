@@ -1,9 +1,9 @@
-﻿import Link from "next/link";
-import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/auth/LogoutButton";
+﻿import { redirect } from "next/navigation";
+import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { IssueForm } from "@/components/issues/IssueForm";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getCurrentUser } from "@/lib/auth";
+import { canCreateIssue } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type NewIssuePageProps = {
@@ -15,6 +15,10 @@ export default async function NewIssuePage({ searchParams }: NewIssuePageProps) 
 
   if (!user) {
     redirect("/login");
+  }
+
+  if (!canCreateIssue(user)) {
+    redirect("/dashboard/issues");
   }
 
   const { fromTestCase } = await searchParams;
@@ -62,12 +66,7 @@ export default async function NewIssuePage({ searchParams }: NewIssuePageProps) 
 
   return (
     <main className="min-h-screen bg-espresso text-ivory">
-      <header className="fixed left-0 right-0 top-0 z-20 border-b border-bronze/70 bg-espresso/78 backdrop-blur-xl">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/dashboard" className="font-display text-xl font-bold tracking-wide text-ivory">Issue<span className="text-coral">Flow</span></Link>
-          <LogoutButton />
-        </nav>
-      </header>
+      <DashboardNav user={user} />
       <section className="mx-auto max-w-5xl px-5 pb-20 pt-32 sm:px-8">
         <SectionHeader
           eyebrow="Create Bug Report"

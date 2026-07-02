@@ -1,19 +1,26 @@
 ﻿import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Badge } from "@/components/Badge";
+import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getCurrentUser } from "@/lib/auth";
+import { canCreateIssue, canEditIssue, isDeveloper, issueWhereForUser } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
-export default async function IssuesPage() {
+type IssuesPageProps = {
+  searchParams: Promise<{ scope?: string }>;
+};
+
+export default async function IssuesPage({ searchParams }: IssuesPageProps) {
   const user = await getCurrentUser();
 
   if (!user) {
     redirect("/login");
   }
 
+  const { scope } = await searchParams;
   const issues = await prisma.issue.findMany({
+    where: issueWhereForUser(user),
     orderBy: { updated_at: "desc" },
     select: {
       id: true,
@@ -22,6 +29,8 @@ export default async function IssuesPage() {
       environment: true,
       severity: true,
       status: true,
+      created_by: true,
+      assigned_to: true,
       updated_at: true,
       creator: { select: { username: true } },
       assignee: { select: { username: true } },
@@ -31,33 +40,25 @@ export default async function IssuesPage() {
 
   return (
     <main className="min-h-screen bg-espresso text-ivory">
-      <header className="fixed left-0 right-0 top-0 z-20 border-b border-bronze/70 bg-espresso/78 backdrop-blur-xl">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/dashboard" className="font-display text-xl font-bold tracking-wide text-ivory">Issue<span className="text-coral">Flow</span></Link>
-          <div className="hidden items-center gap-6 text-sm text-beige md:flex">
-            <Link href="/dashboard" className="transition hover:text-ivory">Dashboard</Link>
-            <Link href="/dashboard/issues" className="transition hover:text-ivory">Bug Reports</Link>
-            <Link href="/dashboard/test-cases" className="transition hover:text-ivory">Test Cases</Link>
-          </div>
-          <LogoutButton />
-        </nav>
-      </header>
+      <DashboardNav user={user} />
       <section className="mx-auto max-w-7xl px-5 pb-20 pt-32 sm:px-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <SectionHeader
-            eyebrow="Issues"
+            eyebrow={isDeveloper(user) && scope === "assigned" ? "Assigned Bugs" : "Issues"}
             title="Bug Reports"
-            description="Track defects discovered during testing, separate from the QA scenarios used to verify expected behavior."
+            description={isDeveloper(user) ? "Review assigned and unassigned defects, update status, and inspect evidence without changing QA-owned details." : "Track defects discovered during testing, separate from the QA scenarios used to verify expected behavior."}
           />
-          <Link href="/dashboard/issues/new" className="rounded-full bg-coral px-5 py-3 text-center text-sm font-bold text-espresso shadow-glow transition hover:bg-amber">
-            Create Bug Report
-          </Link>
+          {canCreateIssue(user) && (
+            <Link href="/dashboard/issues/new" className="rounded-full bg-coral px-5 py-3 text-center text-sm font-bold text-espresso shadow-glow transition hover:bg-amber">
+              Create Bug Report
+            </Link>
+          )}
         </div>
 
         <div className="mt-8 overflow-hidden rounded-lg border border-bronze bg-clay shadow-card">
           <div className="border-b border-bronze p-5">
             <h2 className="font-display text-xl font-semibold">Defect Queue</h2>
-            <p className="mt-1 text-sm text-beige">{issues.length} bug reports found during QA runs.</p>
+            <p className="mt-1 text-sm text-beige">{issues.length} bug reports visible for your role.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] border-collapse text-left text-sm">
@@ -74,7 +75,7 @@ export default async function IssuesPage() {
               <tbody>
                 {issues.length === 0 ? (
                   <tr className="border-t border-bronze/70">
-                    <td className="px-5 py-8 text-beige" colSpan={6}>No bug reports yet. Create one when a test case fails or a defect is discovered.</td>
+                    <td className="px-5 py-8 text-beige" colSpan={6}>No bug reports are visible for your role yet.</td>
                   </tr>
                 ) : (
                   issues.map((issue) => (
@@ -90,7 +91,7 @@ export default async function IssuesPage() {
                       <td className="px-5 py-4">
                         <div className="flex gap-3">
                           <Link className="font-semibold text-amber transition hover:text-coral" href={`/dashboard/issues/${issue.id}`}>View</Link>
-                          <Link className="font-semibold text-beige transition hover:text-ivory" href={`/dashboard/issues/${issue.id}/edit`}>Edit</Link>
+                          {(canEditIssue(user, issue) || isDeveloper(user)) && <Link className="font-semibold text-beige transition hover:text-ivory" href={`/dashboard/issues/${issue.id}/edit`}>Edit</Link>}
                         </div>
                       </td>
                     </tr>

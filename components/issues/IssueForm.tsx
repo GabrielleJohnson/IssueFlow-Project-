@@ -13,6 +13,7 @@ type IssueFormProps = {
   users: IssueUser[];
   testCases: Pick<TestCaseRecord, "id" | "title" | "status" | "priority">[];
   prefill?: IssuePrefill;
+  statusOnly?: boolean;
 };
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
@@ -32,7 +33,7 @@ function formatBytes(bytes: number) {
   return `${(kilobytes / 1024).toFixed(1)} MB`;
 }
 
-export function IssueForm({ mode, issue, users, testCases, prefill }: IssueFormProps) {
+export function IssueForm({ mode, issue, users, testCases, prefill, statusOnly = false }: IssueFormProps) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,7 +91,9 @@ export function IssueForm({ mode, issue, users, testCases, prefill }: IssueFormP
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
-    const payload = {
+    const payload = statusOnly ? {
+      status: String(formData.get("status") ?? issue?.status ?? "OPEN")
+    } : {
       title: String(formData.get("title") ?? ""),
       description: String(formData.get("description") ?? ""),
       environment: String(formData.get("environment") ?? ""),
@@ -117,7 +120,7 @@ export function IssueForm({ mode, issue, users, testCases, prefill }: IssueFormP
       return;
     }
 
-    const evidenceUploaded = await uploadEvidence(data.issue.id);
+    const evidenceUploaded = statusOnly ? true : await uploadEvidence(data.issue.id);
 
     if (!evidenceUploaded) {
       setIsSubmitting(false);
@@ -130,6 +133,33 @@ export function IssueForm({ mode, issue, users, testCases, prefill }: IssueFormP
   }
 
   const defaultLinkedTestCase = issue?.linked_test_case_id ?? prefill?.linked_test_case_id ?? "";
+
+  if (statusOnly) {
+    return (
+      <form onSubmit={handleSubmit} className="grid gap-4 rounded-lg border border-bronze bg-clay p-5 shadow-card">
+        <label>
+          <span className="mb-2 block text-sm font-semibold text-beige">Bug status</span>
+          <select className="field" name="status" defaultValue={issue?.status ?? "OPEN"}>
+            {issueStatuses.map((status) => (
+              <option key={status} value={status}>{formatEnumLabel(status)}</option>
+            ))}
+          </select>
+        </label>
+        <div className="rounded-lg border border-amber/40 bg-amber/10 px-4 py-3 text-sm leading-6 text-beige">
+          Developers can update workflow status while QA-owned reproduction details, severity, evidence, and test links remain protected.
+        </div>
+        {error && <p className="rounded-lg border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-[#ff9aa2]">{error}</p>}
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <button type="submit" disabled={isSubmitting} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso transition hover:bg-amber disabled:cursor-not-allowed disabled:opacity-65">
+            {isSubmitting ? "Saving..." : "Update Status"}
+          </button>
+          <button type="button" onClick={() => router.back()} className="rounded-full border border-bronze px-5 py-3 text-sm font-bold text-ivory transition hover:border-amber hover:text-amber">
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 rounded-lg border border-bronze bg-clay p-5 shadow-card sm:grid-cols-2">
@@ -218,4 +248,8 @@ export function IssueForm({ mode, issue, users, testCases, prefill }: IssueFormP
     </form>
   );
 }
+
+
+
+
 

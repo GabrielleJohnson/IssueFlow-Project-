@@ -1,12 +1,13 @@
 ﻿import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Badge } from "@/components/Badge";
+import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { DeleteIssueButton } from "@/components/issues/DeleteIssueButton";
 import { EvidenceSection } from "@/components/issues/EvidenceSection";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getCurrentUser } from "@/lib/auth";
 import { formatEnumLabel } from "@/lib/issueOptions";
+import { canCreateTestCase, canDeleteIssue, canEditIssue, canUploadEvidence, canViewIssue, isDeveloper } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type PageProps = {
@@ -53,22 +54,13 @@ export default async function IssueDetailPage({ params }: PageProps) {
 
   const issue = await prisma.issue.findUnique({ where: { id: issueId }, select: issueSelect });
 
-  if (!issue) {
+  if (!issue || !canViewIssue(user, issue)) {
     notFound();
   }
 
   return (
     <main className="min-h-screen bg-espresso text-ivory">
-      <header className="fixed left-0 right-0 top-0 z-20 border-b border-bronze/70 bg-espresso/78 backdrop-blur-xl">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/dashboard" className="font-display text-xl font-bold tracking-wide text-ivory">Issue<span className="text-coral">Flow</span></Link>
-          <div className="hidden items-center gap-6 text-sm text-beige md:flex">
-            <Link href="/dashboard/issues" className="transition hover:text-ivory">Bug Reports</Link>
-            <Link href="/dashboard/test-cases" className="transition hover:text-ivory">Test Cases</Link>
-          </div>
-          <LogoutButton />
-        </nav>
-      </header>
+      <DashboardNav user={user} />
       <section className="mx-auto max-w-6xl px-5 pb-20 pt-32 sm:px-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <SectionHeader
@@ -77,7 +69,7 @@ export default async function IssueDetailPage({ params }: PageProps) {
             description={issue.description}
           />
           <div className="flex flex-wrap gap-3">
-            <Link href={`/dashboard/issues/${issue.id}/edit`} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso shadow-glow transition hover:bg-amber">Edit Bug Report</Link>
+            {(canEditIssue(user, issue) || isDeveloper(user)) && <Link href={`/dashboard/issues/${issue.id}/edit`} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso shadow-glow transition hover:bg-amber">{isDeveloper(user) && !canEditIssue(user, issue) ? "Update Status" : "Edit Bug Report"}</Link>}
             <Link href="/dashboard/issues" className="rounded-full border border-bronze px-5 py-3 text-sm font-bold text-ivory transition hover:border-amber hover:text-amber">Back to Bug Reports</Link>
           </div>
         </div>
@@ -98,6 +90,13 @@ export default async function IssueDetailPage({ params }: PageProps) {
           <article className="rounded-lg border border-bronze bg-clay p-4 shadow-card"><p className="text-sm text-beige">Created by</p><p className="mt-2 font-semibold text-ivory">{issue.creator.username}</p><p className="text-sm text-beige">{formatEnumLabel(issue.creator.role)}</p></article>
           <article className="rounded-lg border border-bronze bg-clay p-4 shadow-card"><p className="text-sm text-beige">Assigned to</p><p className="mt-2 font-semibold text-ivory">{issue.assignee?.username ?? "Unassigned"}</p></article>
         </div>
+
+        {isDeveloper(user) && (
+          <div className="mt-8 rounded-lg border border-amber/40 bg-amber/10 p-5 shadow-card">
+            <h2 className="font-display text-xl font-semibold text-ivory">Developer notes placeholder</h2>
+            <p className="mt-2 text-sm leading-6 text-beige">Comments are not built yet. For now, use status updates to communicate progress while reviewing QA evidence and linked test context.</p>
+          </div>
+        )}
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           {[
@@ -120,7 +119,7 @@ export default async function IssueDetailPage({ params }: PageProps) {
               <h2 className="font-display text-xl font-semibold text-ivory">Related Test Cases</h2>
               <p className="mt-1 text-sm text-beige">QA scenarios linked to this bug report.</p>
             </div>
-            <Link href="/dashboard/test-cases/new" className="text-sm font-semibold text-coral transition hover:text-amber">Create test case</Link>
+            {canCreateTestCase(user) && <Link href="/dashboard/test-cases/new" className="text-sm font-semibold text-coral transition hover:text-amber">Create test case</Link>}
           </div>
           <div className="mt-5 space-y-3">
             {issue.testCases.length === 0 ? (
@@ -141,19 +140,15 @@ export default async function IssueDetailPage({ params }: PageProps) {
             )}
           </div>
         </div>
-        <EvidenceSection issueId={issue.id} currentUserId={user.id} currentUserRole={user.role} />
+        <EvidenceSection issueId={issue.id} currentUserId={user.id} currentUserRole={user.role} canUpload={canUploadEvidence(user, issue)} />
 
-
-        <div className="mt-8 rounded-lg border border-bronze bg-clay p-5 shadow-card">
-          <p className="mb-4 text-sm text-beige">Delete is intentionally isolated so it can be hidden or admin-gated later.</p>
-          <DeleteIssueButton issueId={issue.id} />
-        </div>
+        {canDeleteIssue(user, issue) && (
+          <div className="mt-8 rounded-lg border border-bronze bg-clay p-5 shadow-card">
+            <p className="mb-4 text-sm text-beige">Admin-only destructive action.</p>
+            <DeleteIssueButton issueId={issue.id} />
+          </div>
+        )}
       </section>
     </main>
   );
 }
-
-
-
-
-

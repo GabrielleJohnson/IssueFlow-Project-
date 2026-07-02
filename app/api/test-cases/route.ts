@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { isTestCasePriority, isTestCaseStatus } from "@/lib/issueOptions";
+import { canCreateTestCase, canViewIssue, isDeveloper } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 function testCaseSelect() {
@@ -20,7 +21,7 @@ function testCaseSelect() {
     created_at: true,
     updated_at: true,
     creator: { select: { id: true, username: true, email: true, role: true } },
-    linkedIssue: { select: { id: true, title: true, severity: true, status: true } }
+    linkedIssue: { select: { id: true, title: true, severity: true, status: true, created_by: true, assigned_to: true } }
   };
 }
 
@@ -32,6 +33,7 @@ export async function GET() {
   }
 
   const testCases = await prisma.testCase.findMany({
+    where: isDeveloper(user) ? { linkedIssue: { is: { OR: [{ assigned_to: user.id }, { assigned_to: null }] } } } : {},
     orderBy: { updated_at: "desc" },
     select: testCaseSelect()
   });
@@ -44,6 +46,10 @@ export async function POST(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: "You must be logged in to create test cases." }, { status: 401 });
+  }
+
+  if (!canCreateTestCase(user)) {
+    return NextResponse.json({ error: "You do not have permission to create test cases." }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);
@@ -71,6 +77,10 @@ export async function POST(request: NextRequest) {
 
     if (!linkedIssue) {
       return NextResponse.json({ error: "Linked bug report was not found." }, { status: 400 });
+    }
+
+    if (!canViewIssue(user, linkedIssue)) {
+      return NextResponse.json({ error: "You do not have permission to link that bug report." }, { status: 403 });
     }
   }
 
