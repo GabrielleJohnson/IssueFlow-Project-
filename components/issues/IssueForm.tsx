@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRouter } from "next/navigation";
 import { ChangeEvent, FormEvent, useMemo, useState } from "react";
@@ -14,6 +14,7 @@ type IssueFormProps = {
   testCases: Pick<TestCaseRecord, "id" | "title" | "status" | "priority">[];
   prefill?: IssuePrefill;
   statusOnly?: boolean;
+  statusOptions?: readonly string[];
 };
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
@@ -33,7 +34,7 @@ function formatBytes(bytes: number) {
   return `${(kilobytes / 1024).toFixed(1)} MB`;
 }
 
-export function IssueForm({ mode, issue, users, testCases, prefill, statusOnly = false }: IssueFormProps) {
+export function IssueForm({ mode, issue, users, testCases, prefill, statusOnly = false, statusOptions = issueStatuses }: IssueFormProps) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -140,7 +141,7 @@ export function IssueForm({ mode, issue, users, testCases, prefill, statusOnly =
         <label>
           <span className="mb-2 block text-sm font-semibold text-beige">Bug status</span>
           <select className="field" name="status" defaultValue={issue?.status ?? "OPEN"}>
-            {issueStatuses.map((status) => (
+            {statusOptions.map((status) => (
               <option key={status} value={status}>{formatEnumLabel(status)}</option>
             ))}
           </select>
@@ -198,7 +199,7 @@ export function IssueForm({ mode, issue, users, testCases, prefill, statusOnly =
       <label>
         <span className="mb-2 block text-sm font-semibold text-beige">Status</span>
         <select className="field" name="status" defaultValue={issue?.status ?? "OPEN"}>
-          {issueStatuses.map((status) => (
+          {statusOptions.map((status) => (
             <option key={status} value={status}>{formatEnumLabel(status)}</option>
           ))}
         </select>
@@ -248,6 +249,8 @@ export function IssueForm({ mode, issue, users, testCases, prefill, statusOnly =
     </form>
   );
 }
+
+
 
 
 

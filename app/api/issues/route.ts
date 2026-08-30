@@ -1,4 +1,5 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { logIssueActivity } from "@/lib/activity";
 import { getCurrentUser } from "@/lib/auth";
 import { isIssueSeverity, isIssueStatus } from "@/lib/issueOptions";
 import { canCreateIssue, issueWhereForUser } from "@/lib/permissions";
@@ -73,11 +74,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid severity or status value." }, { status: 400 });
   }
 
+  if (status !== "OPEN") {
+    return NextResponse.json({ error: "New bug reports must start as OPEN." }, { status: 400 });
+  }
+
   if (assigned_to) {
     const assignee = await prisma.user.findUnique({ where: { id: assigned_to } });
 
-    if (!assignee) {
-      return NextResponse.json({ error: "Assigned user was not found." }, { status: 400 });
+    if (!assignee || assignee.role !== "DEVELOPER") {
+      return NextResponse.json({ error: "Bug reports can only be assigned to developer users." }, { status: 400 });
     }
   }
 
@@ -105,6 +110,16 @@ export async function POST(request: NextRequest) {
     },
     select: issueSelect()
   });
+
+  await logIssueActivity({ issueId: issue.id, actorId: user.id, actionType: "ISSUE_CREATED", message: `${user.username} created this bug report.` });
+
+  if (assigned_to && issue.assignee) {
+    await logIssueActivity({ issueId: issue.id, actorId: user.id, actionType: "ASSIGNEE_CHANGED", fieldName: "assigned_to", oldValue: null, newValue: String(assigned_to), message: `Assigned to ${issue.assignee.username}.` });
+  }
+
+  if (linked_test_case_id) {
+    await logIssueActivity({ issueId: issue.id, actorId: user.id, actionType: "BUG_CREATED_FROM_FAILED_TEST", fieldName: "linked_test_case_id", oldValue: null, newValue: String(linked_test_case_id), message: `Bug report created from failed Test Case TC-${String(linked_test_case_id).padStart(4, "0")}.` });
+  }
 
   return NextResponse.json({ issue }, { status: 201 });
 }

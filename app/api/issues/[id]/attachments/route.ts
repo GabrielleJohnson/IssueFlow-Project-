@@ -1,7 +1,8 @@
-﻿import { writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { createStoredFilename, ensureIssueUploadDir, issueAttachmentRelativePath, validateAttachment } from "@/lib/attachments";
+import { logIssueActivity } from "@/lib/activity";
 import { getCurrentUser } from "@/lib/auth";
 import { canUploadEvidence, canViewEvidence } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -121,7 +122,15 @@ export async function POST(request: NextRequest, { params }: Params) {
     });
 
     uploadedAttachments.push(attachment);
+
+    await logIssueActivity({
+      issueId,
+      actorId: user.id,
+      actionType: "EVIDENCE_UPLOADED",
+      message: `Evidence "${validation.sanitizedName}" was uploaded.`
+    });
   }
 
   return NextResponse.json({ attachments: uploadedAttachments }, { status: 201 });
 }
+

@@ -1,4 +1,4 @@
-﻿import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { IssueForm } from "@/components/issues/IssueForm";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -26,6 +26,7 @@ export default async function NewIssuePage({ searchParams }: NewIssuePageProps) 
 
   const [users, testCases, failedTestCase] = await Promise.all([
     prisma.user.findMany({
+      where: { role: "DEVELOPER" },
       orderBy: { username: "asc" },
       select: { id: true, username: true, email: true, role: true }
     }),
@@ -74,9 +75,12 @@ export default async function NewIssuePage({ searchParams }: NewIssuePageProps) 
           description="Bug reports describe what failed, where it failed, and how the team can reproduce it."
         />
         <div className="mt-10">
-          <IssueForm mode="create" users={users} testCases={testCases} prefill={prefill} />
+          <IssueForm mode="create" users={users} testCases={testCases} prefill={prefill} statusOptions={["OPEN"]} />
         </div>
       </section>
     </main>
   );
 }
+
+
+

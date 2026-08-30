@@ -1,4 +1,4 @@
-﻿# IssueFlow
+# IssueFlow
 
 IssueFlow is a QA-focused issue tracking platform for testers and small development teams. It includes a polished landing page, protected dashboard, local authentication, SQLite user storage, issue CRUD, test case CRUD, local evidence uploads for bug reports, role-based access control, and GSAP-powered section reveals.
 
@@ -111,6 +111,62 @@ npm.cmd run db:seed-admin
 
 The seed script only uses values from your local environment. It does not hardcode admin credentials in the app.
 
+
+## v0.4.0 Collaboration & Defect Lifecycle
+
+IssueFlow now supports collaborative defect work directly on bug reports:
+
+- Bug comments/discussion on each bug report.
+- Automatic activity history for important backend actions.
+- Developer-only assignment targets.
+- Developer-focused `/dashboard/issues/assigned` page.
+- `REOPENED` as a real bug lifecycle status.
+
+Lifecycle statuses:
+
+```text
+OPEN -> IN_PROGRESS -> IN_REVIEW -> RESOLVED -> CLOSED
+```
+
+Failed verification path:
+
+```text
+RESOLVED -> REOPENED -> IN_PROGRESS -> IN_REVIEW -> RESOLVED
+```
+
+Role lifecycle permissions:
+
+- `ADMIN`: can perform all legitimate lifecycle transitions and can assign, reassign, or unassign any bug report.
+- `TESTER`: can verify resolved bugs with `RESOLVED -> CLOSED`, reopen failed verification with `RESOLVED -> REOPENED`, and reopen regressions with `CLOSED -> REOPENED`.
+- `DEVELOPER`: can move visible assigned/unassigned bugs through `OPEN -> IN_PROGRESS`, `IN_PROGRESS -> IN_REVIEW`, `IN_REVIEW -> RESOLVED`, and `REOPENED -> IN_PROGRESS`.
+
+Assignment workflow:
+
+- Bug reports can be assigned only to users with the `DEVELOPER` role.
+- Admins can assign, reassign, and unassign any bug.
+- Testers can assign bugs to developers while creating or editing bugs they can manage.
+- Developers cannot assign bugs to other developers.
+
+Activity is created automatically for:
+
+- Bug creation
+- Status changes, including reopened/resolved/closed transitions
+- Assignment changes
+- Evidence upload/delete
+- Comment added
+- Failed test case origin or test case link changes
+
+Comments:
+
+- `GET /api/issues/:id/comments`
+- `POST /api/issues/:id/comments`
+- `PATCH /api/comments/:id`
+- `DELETE /api/comments/:id`
+
+Activity:
+
+- `GET /api/issues/:id/activity`
+
 ## Dashboard pages
 
 - `/dashboard`
@@ -118,6 +174,7 @@ The seed script only uses values from your local environment. It does not hardco
 - `/dashboard/issues/new`
 - `/dashboard/issues/[id]`
 - `/dashboard/issues/[id]/edit`
+- `/dashboard/issues/assigned` developer focused
 - `/dashboard/test-cases`
 - `/dashboard/test-cases/new`
 - `/dashboard/test-cases/[id]`
@@ -148,7 +205,7 @@ Issues:
 - `expected_result`
 - `actual_result`
 - `severity` with `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`
-- `status` with `OPEN`, `IN_PROGRESS`, `IN_REVIEW`, `RESOLVED`, `CLOSED`
+- `status` with `OPEN`, `IN_PROGRESS`, `IN_REVIEW`, `RESOLVED`, `REOPENED`, `CLOSED`
 - `created_by`
 - `assigned_to`
 - `created_at`
@@ -182,6 +239,27 @@ Attachments:
 - `uploaded_by`
 - `issue_id`
 - `created_at`
+
+Issue comments:
+
+- `id`
+- `content`
+- `issue_id`
+- `author_id`
+- `created_at`
+- `updated_at`
+
+Issue activities:
+
+- `id`
+- `issue_id`
+- `actor_id`
+- `action_type`
+- `field_name`
+- `old_value`
+- `new_value`
+- `message`
+- `created_at`
 This project uses SQLite for local development. The generated database file `prisma/dev.db` is ignored by git.
 
 ## Prisma notes
@@ -202,6 +280,7 @@ npm.cmd run db:init
 ```
 
 That command creates or upgrades the local SQLite tables expected by the Prisma client.
+
 
 
 

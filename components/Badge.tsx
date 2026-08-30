@@ -1,4 +1,4 @@
-﻿import { formatEnumLabel } from "@/lib/issueOptions";
+import { formatEnumLabel } from "@/lib/issueOptions";
 
 type BadgeProps = {
   label: string;
@@ -21,6 +21,7 @@ const styles: Record<string, string> = {
   "Ready for QA": "border-sage/40 bg-sage/15 text-sage",
   Resolved: "border-sage/40 bg-sage/15 text-sage",
   RESOLVED: "border-sage/40 bg-sage/15 text-sage",
+  REOPENED: "border-ember/60 bg-ember/20 text-[#ff9aa2]",
   CLOSED: "border-bronze bg-espresso/80 text-beige",
   Pass: "border-sage/40 bg-sage/15 text-sage",
   PASSED: "border-sage/40 bg-sage/15 text-sage",
@@ -41,3 +42,4 @@ export function Badge({ label }: BadgeProps) {
     </span>
   );
 }
+

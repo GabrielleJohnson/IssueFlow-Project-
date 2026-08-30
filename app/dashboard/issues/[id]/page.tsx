@@ -1,13 +1,17 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/Badge";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
+import { ActivityTimeline } from "@/components/issues/ActivityTimeline";
+import { CommentsSection } from "@/components/issues/CommentsSection";
 import { DeleteIssueButton } from "@/components/issues/DeleteIssueButton";
 import { EvidenceSection } from "@/components/issues/EvidenceSection";
+import { IssueLifecycleActions } from "@/components/issues/IssueLifecycleActions";
+import { IssueLifecycleIndicator } from "@/components/issues/IssueLifecycleIndicator";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getCurrentUser } from "@/lib/auth";
 import { formatEnumLabel } from "@/lib/issueOptions";
-import { canCreateTestCase, canDeleteIssue, canEditIssue, canUploadEvidence, canViewIssue, isDeveloper } from "@/lib/permissions";
+import { canCreateTestCase, canDeleteIssue, canEditIssue, canTransitionIssueStatus, canUploadEvidence, canViewIssue, isDeveloper } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type PageProps = {
@@ -94,9 +98,20 @@ export default async function IssueDetailPage({ params }: PageProps) {
         {isDeveloper(user) && (
           <div className="mt-8 rounded-lg border border-amber/40 bg-amber/10 p-5 shadow-card">
             <h2 className="font-display text-xl font-semibold text-ivory">Developer notes placeholder</h2>
-            <p className="mt-2 text-sm leading-6 text-beige">Comments are not built yet. For now, use status updates to communicate progress while reviewing QA evidence and linked test context.</p>
+            <p className="mt-2 text-sm leading-6 text-beige">Use discussion for implementation notes and status updates to communicate progress while reviewing QA evidence and linked test context.</p>
           </div>
         )}
+
+        <IssueLifecycleIndicator status={issue.status} />
+
+        {issue.linkedTestCase && issue.status === "RESOLVED" && (
+          <div className="mt-8 rounded-lg border border-amber/40 bg-amber/10 p-5 shadow-card">
+            <h2 className="font-display text-xl font-semibold text-ivory">Retest linked test case before closing</h2>
+            <p className="mt-2 text-sm leading-6 text-beige">Fix marked resolved. Retest the linked Test Case before closing this bug report.</p>
+          </div>
+        )}
+
+        <IssueLifecycleActions issueId={issue.id} status={issue.status} canClose={canTransitionIssueStatus(user, issue, "CLOSED")} canReopen={canTransitionIssueStatus(user, issue, "REOPENED")} />
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           {[
@@ -141,6 +156,8 @@ export default async function IssueDetailPage({ params }: PageProps) {
           </div>
         </div>
         <EvidenceSection issueId={issue.id} currentUserId={user.id} currentUserRole={user.role} canUpload={canUploadEvidence(user, issue)} />
+        <CommentsSection issueId={issue.id} />
+        <ActivityTimeline issueId={issue.id} />
 
         {canDeleteIssue(user, issue) && (
           <div className="mt-8 rounded-lg border border-bronze bg-clay p-5 shadow-card">
@@ -152,3 +169,4 @@ export default async function IssueDetailPage({ params }: PageProps) {
     </main>
   );
 }
+

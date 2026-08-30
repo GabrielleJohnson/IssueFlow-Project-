@@ -1,6 +1,6 @@
-﻿export const userRoles = ["ADMIN", "TESTER", "DEVELOPER"] as const;
+export const userRoles = ["ADMIN", "TESTER", "DEVELOPER"] as const;
 export const issueSeverities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
-export const issueStatuses = ["OPEN", "IN_PROGRESS", "IN_REVIEW", "RESOLVED", "CLOSED"] as const;
+export const issueStatuses = ["OPEN", "IN_PROGRESS", "IN_REVIEW", "RESOLVED", "REOPENED", "CLOSED"] as const;
 export const testCaseStatuses = ["NOT_RUN", "PASSED", "FAILED", "BLOCKED"] as const;
 export const testCasePriorities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 
@@ -37,5 +37,3 @@ export function formatEnumLabel(value: string) {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
-
-

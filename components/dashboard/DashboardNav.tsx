@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { isAdmin, isDeveloper, isTester } from "@/lib/permissions";
 
@@ -26,7 +26,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
         ]
       : [
           { href: "/dashboard", label: "Dashboard" },
-          { href: "/dashboard/issues?scope=assigned", label: "Assigned Bugs" },
+          { href: "/dashboard/issues/assigned", label: "Assigned Bugs" },
           { href: "/dashboard/issues", label: "Bug Reports" }
         ];
 
@@ -68,3 +68,4 @@ export function roleDashboardDescription(role: string) {
 
   return "Track test cases, failed runs, bug reports created from failed tests, and evidence uploads without leaving the QA workflow.";
 }
+

@@ -1,4 +1,4 @@
-﻿import type { UserRole } from "@/lib/issueOptions";
+import type { IssueStatus, UserRole } from "@/lib/issueOptions";
 
 export type PermissionUser = {
   id: number;
@@ -8,6 +8,7 @@ export type PermissionUser = {
 export type IssuePermissionTarget = {
   created_by: number;
   assigned_to: number | null;
+  status?: string;
 };
 
 export type TestCasePermissionTarget = {
@@ -18,6 +19,35 @@ export type TestCasePermissionTarget = {
 export type AttachmentPermissionTarget = {
   uploaded_by: number;
   issue?: IssuePermissionTarget | null;
+};
+
+export type CommentPermissionTarget = {
+  author_id: number;
+  issue?: IssuePermissionTarget | null;
+};
+
+export const normalIssueLifecycle = ["OPEN", "IN_PROGRESS", "IN_REVIEW", "RESOLVED", "CLOSED"] as const;
+export const reopenedIssueLifecycle = ["RESOLVED", "REOPENED", "IN_PROGRESS", "IN_REVIEW", "RESOLVED"] as const;
+
+const developerTransitions: Record<string, IssueStatus[]> = {
+  OPEN: ["IN_PROGRESS"],
+  IN_PROGRESS: ["IN_REVIEW"],
+  IN_REVIEW: ["RESOLVED"],
+  REOPENED: ["IN_PROGRESS"]
+};
+
+const testerTransitions: Record<string, IssueStatus[]> = {
+  RESOLVED: ["CLOSED", "REOPENED"],
+  CLOSED: ["REOPENED"]
+};
+
+const adminTransitions: Record<string, IssueStatus[]> = {
+  OPEN: ["IN_PROGRESS", "CLOSED"],
+  IN_PROGRESS: ["IN_REVIEW", "OPEN"],
+  IN_REVIEW: ["RESOLVED", "IN_PROGRESS"],
+  RESOLVED: ["CLOSED", "REOPENED"],
+  REOPENED: ["IN_PROGRESS", "CLOSED"],
+  CLOSED: ["REOPENED"]
 };
 
 export function normalizeRole(role?: string): UserRole {
@@ -68,12 +98,46 @@ export function canEditIssue(user: PermissionUser | null | undefined, issue: Iss
   return isAdmin(user) || (isTester(user) && issue.created_by === user.id);
 }
 
+export function canAssignIssue(user: PermissionUser | null | undefined, issue: IssuePermissionTarget) {
+  return Boolean(user && (isAdmin(user) || (isTester(user) && canViewIssue(user, issue))));
+}
+
 export function canUpdateIssueStatus(user: PermissionUser | null | undefined, issue: IssuePermissionTarget) {
   if (!user) {
     return false;
   }
 
-  return canEditIssue(user, issue) || (isDeveloper(user) && canViewIssue(user, issue));
+  return canEditIssue(user, issue) || (isTester(user) && canViewIssue(user, issue)) || (isDeveloper(user) && canViewIssue(user, issue));
+}
+
+export function canTransitionIssueStatus(user: PermissionUser | null | undefined, issue: IssuePermissionTarget, nextStatus: string) {
+  if (!user || !issue.status || issue.status === nextStatus) {
+    return Boolean(user && issue.status === nextStatus && canViewIssue(user, issue));
+  }
+
+  if (!canUpdateIssueStatus(user, issue)) {
+    return false;
+  }
+
+  const currentStatus = issue.status;
+
+  if (isAdmin(user)) {
+    return adminTransitions[currentStatus]?.includes(nextStatus as IssueStatus) ?? false;
+  }
+
+  if (isDeveloper(user)) {
+    return developerTransitions[currentStatus]?.includes(nextStatus as IssueStatus) ?? false;
+  }
+
+  if (isTester(user)) {
+    return testerTransitions[currentStatus]?.includes(nextStatus as IssueStatus) ?? false;
+  }
+
+  return false;
+}
+
+export function validTransitionsForIssue(user: PermissionUser | null | undefined, issue: IssuePermissionTarget) {
+  return ["OPEN", "IN_PROGRESS", "IN_REVIEW", "RESOLVED", "REOPENED", "CLOSED"].filter((status) => canTransitionIssueStatus(user, issue, status));
 }
 
 export function canDeleteIssue(user: PermissionUser | null | undefined, _issue?: IssuePermissionTarget) {
@@ -120,6 +184,22 @@ export function canDeleteEvidence(user: PermissionUser | null | undefined, attac
   return isAdmin(user) || attachment.uploaded_by === user.id;
 }
 
+export function canCommentOnIssue(user: PermissionUser | null | undefined, issue: IssuePermissionTarget) {
+  return canViewIssue(user, issue);
+}
+
+export function canViewIssueActivity(user: PermissionUser | null | undefined, issue: IssuePermissionTarget) {
+  return canViewIssue(user, issue);
+}
+
+export function canEditComment(user: PermissionUser | null | undefined, comment: CommentPermissionTarget) {
+  return Boolean(user && comment.author_id === user.id);
+}
+
+export function canDeleteComment(user: PermissionUser | null | undefined, comment: CommentPermissionTarget) {
+  return Boolean(user && (isAdmin(user) || comment.author_id === user.id));
+}
+
 export function issueWhereForUser(user: PermissionUser) {
   if (isDeveloper(user)) {
     return { OR: [{ assigned_to: user.id }, { assigned_to: null }] };
@@ -128,11 +208,16 @@ export function issueWhereForUser(user: PermissionUser) {
   return {};
 }
 
+export function assignedIssueWhereForUser(user: PermissionUser) {
+  return isDeveloper(user) ? { assigned_to: user.id } : issueWhereForUser(user);
+}
+
 export function issueStatusOnlyPayload(body: Record<string, unknown> | null) {
   if (!body) {
     return false;
   }
 
   const keys = Object.keys(body).filter((key) => body[key] !== undefined);
-  return keys.length > 0 && keys.every((key) => key === "status");
+  return keys.length > 0 && keys.every((key) => key === "status" || key === "reopen_reason");
 }
+

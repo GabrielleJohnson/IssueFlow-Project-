@@ -1,9 +1,9 @@
-﻿import { notFound, redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { IssueForm } from "@/components/issues/IssueForm";
 import { SectionHeader } from "@/components/SectionHeader";
 import { getCurrentUser } from "@/lib/auth";
-import { canEditIssue, canUpdateIssueStatus, canViewIssue, isDeveloper } from "@/lib/permissions";
+import { canEditIssue, canUpdateIssueStatus, canViewIssue, isDeveloper, validTransitionsForIssue } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type PageProps = {
@@ -46,7 +46,7 @@ export default async function EditIssuePage({ params }: PageProps) {
 
   const [issue, users, testCases] = await Promise.all([
     prisma.issue.findUnique({ where: { id: issueId }, select: issueSelect }),
-    prisma.user.findMany({ orderBy: { username: "asc" }, select: { id: true, username: true, email: true, role: true } }),
+    prisma.user.findMany({ where: { role: "DEVELOPER" }, orderBy: { username: "asc" }, select: { id: true, username: true, email: true, role: true } }),
     prisma.testCase.findMany({ orderBy: { updated_at: "desc" }, where: { status: "FAILED" }, select: { id: true, title: true, status: true, priority: true } })
   ]);
 
@@ -59,6 +59,7 @@ export default async function EditIssuePage({ params }: PageProps) {
   }
 
   const statusOnly = isDeveloper(user) && !canEditIssue(user, issue);
+  const statusOptions = Array.from(new Set([issue.status, ...validTransitionsForIssue(user, issue)]));
 
   return (
     <main className="min-h-screen bg-espresso text-ivory">
@@ -70,9 +71,10 @@ export default async function EditIssuePage({ params }: PageProps) {
           description={statusOnly ? "Developers can move visible bug reports through the workflow without changing QA-owned report details." : "Bug reports capture defects found while running QA scenarios."}
         />
         <div className="mt-10">
-          <IssueForm mode="edit" issue={issue} users={users} testCases={testCases} statusOnly={statusOnly} />
+          <IssueForm mode="edit" issue={issue} users={users} testCases={testCases} statusOnly={statusOnly} statusOptions={statusOptions} />
         </div>
       </section>
     </main>
   );
 }
+

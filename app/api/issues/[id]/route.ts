@@ -1,7 +1,8 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { assignmentMessage, logIssueActivity, statusActivityType, statusChangeMessage } from "@/lib/activity";
 import { getCurrentUser } from "@/lib/auth";
 import { isIssueSeverity, isIssueStatus } from "@/lib/issueOptions";
-import { canDeleteIssue, canEditIssue, canUpdateIssueStatus, canViewIssue, issueStatusOnlyPayload } from "@/lib/permissions";
+import { canAssignIssue, canDeleteIssue, canEditIssue, canTransitionIssueStatus, canUpdateIssueStatus, canViewIssue, issueStatusOnlyPayload } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type Params = {
@@ -34,6 +35,20 @@ async function getIssueId(params: Params["params"]) {
   const { id } = await params;
   const issueId = Number(id);
   return Number.isInteger(issueId) ? issueId : null;
+}
+
+async function validateAssignee(assignedTo: number | null) {
+  if (!assignedTo) {
+    return { ok: true as const, assignee: null };
+  }
+
+  const assignee = await prisma.user.findUnique({ where: { id: assignedTo }, select: { id: true, username: true, role: true } });
+
+  if (!assignee || assignee.role !== "DEVELOPER") {
+    return { ok: false as const, error: "Bug reports can only be assigned to developer users." };
+  }
+
+  return { ok: true as const, assignee };
 }
 
 export async function GET(_request: NextRequest, { params }: Params) {
@@ -75,7 +90,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Invalid bug report id." }, { status: 400 });
   }
 
-  const existingIssue = await prisma.issue.findUnique({ where: { id: issueId } });
+  const existingIssue = await prisma.issue.findUnique({
+    where: { id: issueId },
+    include: {
+      assignee: { select: { id: true, username: true } },
+      linkedTestCase: { select: { id: true, title: true } }
+    }
+  });
 
   if (!existingIssue) {
     return NextResponse.json({ error: "Bug report not found." }, { status: 404 });
@@ -83,9 +104,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const status = String(body?.status ?? existingIssue.status);
+  const reopenReason = String(body?.reopen_reason ?? "").trim();
 
   if (!isIssueStatus(status)) {
     return NextResponse.json({ error: "Invalid status value." }, { status: 400 });
+  }
+
+  if (status !== existingIssue.status && !canTransitionIssueStatus(user, existingIssue, status)) {
+    return NextResponse.json({ error: `Invalid status transition from ${existingIssue.status} to ${status}.` }, { status: 403 });
   }
 
   if (issueStatusOnlyPayload(body)) {
@@ -98,6 +124,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       data: { status },
       select: issueSelect()
     });
+
+    if (status !== existingIssue.status) {
+      await logIssueActivity({
+        issueId,
+        actorId: user.id,
+        actionType: statusActivityType(status),
+        fieldName: "status",
+        oldValue: existingIssue.status,
+        newValue: status,
+        message: statusChangeMessage(user.username, existingIssue.status, status, reopenReason)
+      });
+    }
 
     return NextResponse.json({ issue });
   }
@@ -114,12 +152,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Invalid severity value." }, { status: 400 });
   }
 
-  if (assigned_to) {
-    const assignee = await prisma.user.findUnique({ where: { id: assigned_to } });
+  if (assigned_to !== existingIssue.assigned_to && !canAssignIssue(user, existingIssue)) {
+    return NextResponse.json({ error: "You do not have permission to assign this bug report." }, { status: 403 });
+  }
 
-    if (!assignee) {
-      return NextResponse.json({ error: "Assigned user was not found." }, { status: 400 });
-    }
+  const assigneeValidation = await validateAssignee(assigned_to);
+
+  if (!assigneeValidation.ok) {
+    return NextResponse.json({ error: assigneeValidation.error }, { status: 400 });
   }
 
   if (linked_test_case_id) {
@@ -152,6 +192,42 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     data,
     select: issueSelect()
   });
+
+  if (status !== existingIssue.status) {
+    await logIssueActivity({
+      issueId,
+      actorId: user.id,
+      actionType: statusActivityType(status),
+      fieldName: "status",
+      oldValue: existingIssue.status,
+      newValue: status,
+      message: statusChangeMessage(user.username, existingIssue.status, status, reopenReason)
+    });
+  }
+
+  if (assigned_to !== existingIssue.assigned_to) {
+    await logIssueActivity({
+      issueId,
+      actorId: user.id,
+      actionType: "ASSIGNEE_CHANGED",
+      fieldName: "assigned_to",
+      oldValue: existingIssue.assigned_to ? String(existingIssue.assigned_to) : null,
+      newValue: assigned_to ? String(assigned_to) : null,
+      message: assignmentMessage(existingIssue.assignee?.username ?? null, issue.assignee?.username ?? null)
+    });
+  }
+
+  if (linked_test_case_id !== existingIssue.linked_test_case_id) {
+    await logIssueActivity({
+      issueId,
+      actorId: user.id,
+      actionType: linked_test_case_id ? "TEST_CASE_LINKED" : "TEST_CASE_UNLINKED",
+      fieldName: "linked_test_case_id",
+      oldValue: existingIssue.linked_test_case_id ? String(existingIssue.linked_test_case_id) : null,
+      newValue: linked_test_case_id ? String(linked_test_case_id) : null,
+      message: linked_test_case_id ? `Linked Test Case TC-${String(linked_test_case_id).padStart(4, "0")}.` : "Linked test case was removed."
+    });
+  }
 
   return NextResponse.json({ issue });
 }

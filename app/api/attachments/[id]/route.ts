@@ -1,5 +1,6 @@
-﻿import { readFile, unlink } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import { NextRequest, NextResponse } from "next/server";
+import { logIssueActivity } from "@/lib/activity";
 import { attachmentAbsolutePath } from "@/lib/attachments";
 import { getCurrentUser } from "@/lib/auth";
 import { canDeleteEvidence, canViewEvidence } from "@/lib/permissions";
@@ -87,6 +88,14 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
   await unlink(attachmentAbsolutePath(attachment.filepath)).catch(() => undefined);
   await prisma.attachment.delete({ where: { id: attachmentId } });
+  await logIssueActivity({
+    issueId: attachment.issue_id,
+    actorId: user.id,
+    actionType: "EVIDENCE_DELETED",
+    message: `Evidence "${attachment.original_name}" was deleted.`
+  });
 
   return NextResponse.json({ ok: true });
 }
+
+

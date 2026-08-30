@@ -8,40 +8,44 @@ datasource db {
 }
 
 model User {
-  id               Int          @id @default(autoincrement())
+  id               Int             @id @default(autoincrement())
   username         String
-  email            String       @unique
+  email            String          @unique
   password_hash    String
-  role             String       @default("TESTER")
-  created_at       DateTime     @default(now())
-  createdIssues    Issue[]      @relation("CreatedIssues")
-  assignedIssues   Issue[]      @relation("AssignedIssues")
-  createdTestCases TestCase[]   @relation("CreatedTestCases")
-  attachments      Attachment[] @relation("UploadedAttachments")
+  role             String          @default("TESTER")
+  created_at       DateTime        @default(now())
+  createdIssues    Issue[]         @relation("CreatedIssues")
+  assignedIssues   Issue[]         @relation("AssignedIssues")
+  createdTestCases TestCase[]      @relation("CreatedTestCases")
+  attachments      Attachment[]    @relation("UploadedAttachments")
+  comments         IssueComment[]  @relation("AuthoredComments")
+  activities       IssueActivity[] @relation("IssueActivityActor")
 
   @@map("users")
 }
 
 model Issue {
-  id                  Int          @id @default(autoincrement())
+  id                  Int             @id @default(autoincrement())
   title               String
   description         String
-  environment         String       @default("Not specified")
+  environment         String          @default("Not specified")
   steps_to_reproduce  String
   expected_result     String
   actual_result       String
-  severity            String       @default("MEDIUM")
-  status              String       @default("OPEN")
+  severity            String          @default("MEDIUM")
+  status              String          @default("OPEN")
   created_by          Int
   assigned_to         Int?
   linked_test_case_id Int?
-  created_at          DateTime     @default(now())
-  updated_at          DateTime     @updatedAt
-  creator             User         @relation("CreatedIssues", fields: [created_by], references: [id])
-  assignee            User?        @relation("AssignedIssues", fields: [assigned_to], references: [id])
-  testCases           TestCase[]   @relation("TestCaseLinkedIssue")
-  linkedTestCase      TestCase?    @relation("IssueFromFailedTest", fields: [linked_test_case_id], references: [id])
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  creator             User            @relation("CreatedIssues", fields: [created_by], references: [id])
+  assignee            User?           @relation("AssignedIssues", fields: [assigned_to], references: [id])
+  testCases           TestCase[]      @relation("TestCaseLinkedIssue")
+  linkedTestCase      TestCase?       @relation("IssueFromFailedTest", fields: [linked_test_case_id], references: [id])
   attachments         Attachment[]
+  comments            IssueComment[]
+  activities          IssueActivity[]
 
   @@map("issues")
 }
@@ -82,4 +86,33 @@ model Attachment {
   issue         Issue    @relation(fields: [issue_id], references: [id], onDelete: Cascade)
 
   @@map("attachments")
+}
+
+model IssueComment {
+  id         Int      @id @default(autoincrement())
+  content    String
+  issue_id   Int
+  author_id  Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  issue      Issue    @relation(fields: [issue_id], references: [id], onDelete: Cascade)
+  author     User     @relation("AuthoredComments", fields: [author_id], references: [id])
+
+  @@map("issue_comments")
+}
+
+model IssueActivity {
+  id          Int      @id @default(autoincrement())
+  issue_id    Int
+  actor_id    Int?
+  action_type String
+  field_name  String?
+  old_value   String?
+  new_value   String?
+  message     String
+  created_at  DateTime @default(now())
+  issue       Issue    @relation(fields: [issue_id], references: [id], onDelete: Cascade)
+  actor       User?    @relation("IssueActivityActor", fields: [actor_id], references: [id], onDelete: SetNull)
+
+  @@map("issue_activities")
 }
