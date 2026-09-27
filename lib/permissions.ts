@@ -71,7 +71,7 @@ export function canManageUsers(user?: PermissionUser | null) {
 }
 
 export function canViewAnalytics(user?: PermissionUser | null) {
-  return isAdmin(user);
+  return Boolean(user);
 }
 
 export function canViewIssue(user: PermissionUser | null | undefined, issue: IssuePermissionTarget) {

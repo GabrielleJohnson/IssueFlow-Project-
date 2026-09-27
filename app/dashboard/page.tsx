@@ -2,7 +2,7 @@
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { IssueDashboard } from "@/components/issues/IssueDashboard";
 import { getCurrentUser } from "@/lib/auth";
-import { canViewAnalytics, isAdmin, isDeveloper, issueWhereForUser } from "@/lib/permissions";
+import { isAdmin, isDeveloper, issueWhereForUser } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 const issueSelect = {
@@ -68,7 +68,7 @@ export default async function DashboardPage() {
       prisma.testCase.count({ where: { ...visibleTestCaseWhere, status: "PASSED" } }),
       prisma.testCase.count({ where: { ...visibleTestCaseWhere, status: "FAILED" } }),
       prisma.testCase.count({ where: { ...visibleTestCaseWhere, status: "BLOCKED" } }),
-      canViewAnalytics(user) ? prisma.user.count() : Promise.resolve(0),
+      isAdmin(user) ? prisma.user.count() : Promise.resolve(0),
       prisma.attachment.count({ where: evidenceWhere })
     ])
   ]);

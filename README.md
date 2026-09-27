@@ -92,9 +92,9 @@ Evidence API routes:
 
 IssueFlow supports three roles:
 
-- `ADMIN`: can view/create/edit/delete all bug reports and test cases, upload/view/delete any evidence, manage user roles, and view analytics.
-- `TESTER`: can view bug reports, create bug reports, edit bug reports they created, upload evidence, delete evidence they uploaded, create/edit/view test cases, update test case run status, and create bug reports from failed tests.
-- `DEVELOPER`: can view assigned and unassigned bug reports, update bug report status, view linked test cases, and view evidence. Developers cannot delete bug reports, delete test cases, upload evidence, or manage users.
+- `ADMIN`: can view/create/edit/delete all bug reports and test cases, upload/view/delete any evidence, manage user roles, and view organization-wide analytics.
+- `TESTER`: can view bug reports, create bug reports, edit bug reports they created, upload evidence, delete evidence they uploaded, create/edit/view test cases, update test case run status, create bug reports from failed tests, and view QA-wide analytics.
+- `DEVELOPER`: can view assigned and unassigned bug reports, update bug report status, view linked test cases and evidence, and view analytics scoped to those visible bugs. Developers cannot delete bug reports, delete test cases, upload evidence, or manage users.
 
 Normal registration creates `TESTER` users. Users cannot self-select `ADMIN` during registration.
 
@@ -167,6 +167,39 @@ Activity:
 
 - `GET /api/issues/:id/activity`
 
+## v0.5.0 Analytics Dashboard
+
+The protected `/dashboard/analytics` page and `GET /api/analytics` endpoint report directly from the IssueFlow SQLite database. The page includes:
+
+- Total, active/open, Critical, Reopened, Resolved, Closed, In Progress, and unassigned bug metrics.
+- Bug Reports by status and severity charts.
+- Test Case Results with Passed, Failed, Blocked, and Not Run counts.
+- Current Reopened bugs, recorded reopen events, and an activity-history-based reopen rate.
+- Developer workload for admins and a developer's own active workload for developer accounts.
+- Ten recent meaningful activity records.
+- Problem Areas based only on structured `feature_module` test case data and linked bug relationships.
+
+Analytics definitions:
+
+- **Active/open bugs** are bugs currently in `OPEN`, `IN_PROGRESS`, `IN_REVIEW`, or `REOPENED`. `RESOLVED` and `CLOSED` are excluded.
+- **Test Pass Rate** is `PASSED / (PASSED + FAILED + BLOCKED) * 100`. `NOT_RUN` test cases are excluded. The rate is `0%` when no tests have been executed.
+- **Recorded Reopen Rate** is the number of unique bugs with both `ISSUE_RESOLVED` and `ISSUE_REOPENED` activity divided by the number of unique bugs with recorded `ISSUE_RESOLVED` activity. It covers activity recorded from v0.4.0 onward and does not reconstruct older history.
+- **Developer workload** counts assigned bugs in active/open statuses only.
+
+Role-specific analytics:
+
+- `ADMIN` receives organization-wide analytics and workload for every developer.
+- `TESTER` receives QA-wide bug and test case analytics.
+- `DEVELOPER` receives analytics for bugs assigned to them or currently unassigned, linked test context, and only their own assigned workload.
+
+No chart dependency was added. The responsive charts are lightweight server-rendered React components using the existing IssueFlow palette.
+
+Run the self-cleaning analytics accuracy and RBAC smoke test after building:
+
+```powershell
+npm.cmd run smoke:analytics
+```
+
 ## Dashboard pages
 
 - `/dashboard`
@@ -175,6 +208,7 @@ Activity:
 - `/dashboard/issues/[id]`
 - `/dashboard/issues/[id]/edit`
 - `/dashboard/issues/assigned` developer focused
+- `/dashboard/analytics`
 - `/dashboard/test-cases`
 - `/dashboard/test-cases/new`
 - `/dashboard/test-cases/[id]`

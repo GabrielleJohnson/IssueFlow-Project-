@@ -197,57 +197,15 @@ export function IssueDashboard({ issues, testCases, stats, user }: IssueDashboar
 
       {canViewAnalytics(user) && (
         <section id="analytics" className="bg-[#18120f] px-5 py-20 sm:px-8">
-          <div className="mx-auto max-w-7xl">
-            <SectionHeader
-              eyebrow="Admin Analytics"
-              title="Readable QA signals without a reporting maze."
-              description="Admins can watch user count, evidence volume, severity mix, and test outcomes from the same dashboard."
-            />
-            <div className="mt-10 grid gap-5 lg:grid-cols-3">
-              <article className="rounded-lg border border-bronze bg-clay p-5 shadow-card">
-                <h3 className="font-display text-xl font-semibold">Bugs by Severity</h3>
-                <div className="mt-6 space-y-4">
-                  {[["Critical", stats.critical, "#E63946"], ["Total", stats.total, "#FF6B4A"], ["Open", stats.open, "#F7B267"], ["Resolved", stats.resolved, "#8DB596"]].map(([label, value, color]) => (
-                    <div key={label}>
-                      <div className="mb-2 flex justify-between text-sm text-beige">
-                        <span>{label}</span>
-                        <span>{value} bugs</span>
-                      </div>
-                      <div className="h-3 rounded-full bg-espresso">
-                        <div className="h-3 rounded-full" style={{ width: `${Math.min(Number(value) * 12, 100)}%`, backgroundColor: String(color) }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </article>
-              <article className="rounded-lg border border-bronze bg-clay p-5 shadow-card">
-                <h3 className="font-display text-xl font-semibold">Resolution Progress</h3>
-                <div className="mt-8 flex items-center justify-center">
-                  <div className="grid h-44 w-44 place-items-center rounded-full border-[18px] border-sage bg-espresso shadow-glow">
-                    <div className="text-center">
-                      <p className="font-display text-4xl font-bold text-ivory">{stats.total ? Math.round((stats.resolved / stats.total) * 100) : 0}%</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-beige">Resolved</p>
-                    </div>
-                  </div>
-                </div>
-              </article>
-              <article className="rounded-lg border border-bronze bg-clay p-5 shadow-card">
-                <h3 className="font-display text-xl font-semibold">Test Outcomes</h3>
-                <div className="mt-6 space-y-3">
-                  {[
-                    ["PASSED", stats.passedTests],
-                    ["FAILED", stats.failedTests],
-                    ["BLOCKED", stats.blockedTests],
-                    ["NOT_RUN", Math.max(stats.totalTestCases - stats.passedTests - stats.failedTests - stats.blockedTests, 0)]
-                  ].map(([status, count]) => (
-                    <div key={status} className="flex items-center justify-between rounded-lg border border-bronze bg-espresso/60 p-3">
-                      <span className="font-semibold text-ivory">{formatEnumLabel(String(status))}</span>
-                      <span className="text-sm font-semibold text-amber">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </article>
+          <div className="mx-auto flex max-w-7xl flex-col gap-6 rounded-lg border border-bronze bg-clay p-6 shadow-card lg:flex-row lg:items-center lg:justify-between lg:p-8">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-coral">Analytics</p>
+              <h2 className="mt-2 font-display text-2xl font-semibold">Go deeper than the operational dashboard.</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-beige">Explore live defect status, severity, test outcomes, reopen history, workload, problem areas, and recent activity for your role.</p>
             </div>
+            <Link href="/dashboard/analytics" className="rounded-full bg-coral px-5 py-3 text-center text-sm font-bold text-espresso shadow-glow transition hover:bg-amber">
+              View Analytics
+            </Link>
           </div>
         </section>
       )}

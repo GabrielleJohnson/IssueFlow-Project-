@@ -15,19 +15,21 @@ export function DashboardNav({ user }: DashboardNavProps) {
         { href: "/dashboard", label: "Dashboard" },
         { href: "/dashboard/issues", label: "Bug Reports" },
         { href: "/dashboard/test-cases", label: "Test Cases" },
-        { href: "/dashboard#analytics", label: "Analytics" },
+        { href: "/dashboard/analytics", label: "Analytics" },
         { href: "/dashboard/users", label: "Users" }
       ]
     : isTester(user)
       ? [
           { href: "/dashboard", label: "Dashboard" },
           { href: "/dashboard/issues", label: "Bug Reports" },
-          { href: "/dashboard/test-cases", label: "Test Cases" }
+          { href: "/dashboard/test-cases", label: "Test Cases" },
+          { href: "/dashboard/analytics", label: "Analytics" }
         ]
       : [
           { href: "/dashboard", label: "Dashboard" },
           { href: "/dashboard/issues/assigned", label: "Assigned Bugs" },
-          { href: "/dashboard/issues", label: "Bug Reports" }
+          { href: "/dashboard/issues", label: "Bug Reports" },
+          { href: "/dashboard/analytics", label: "Analytics" }
         ];
 
   return (
