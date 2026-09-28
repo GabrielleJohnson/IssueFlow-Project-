@@ -13,9 +13,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { formatEnumLabel } from "@/lib/issueOptions";
 import { canCreateTestCase, canDeleteIssue, canEditIssue, canTransitionIssueStatus, canUploadEvidence, canViewIssue, isDeveloper } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { safeListReturnPath } from "@/lib/productivity";
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 };
 
 const issueSelect = {
@@ -42,7 +44,7 @@ const issueSelect = {
   }
 };
 
-export default async function IssueDetailPage({ params }: PageProps) {
+export default async function IssueDetailPage({ params, searchParams }: PageProps) {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -50,6 +52,8 @@ export default async function IssueDetailPage({ params }: PageProps) {
   }
 
   const { id } = await params;
+  const { from } = await searchParams;
+  const returnPath = safeListReturnPath(from, "/dashboard/issues");
   const issueId = Number(id);
 
   if (!Number.isInteger(issueId)) {
@@ -74,7 +78,7 @@ export default async function IssueDetailPage({ params }: PageProps) {
           />
           <div className="flex flex-wrap gap-3">
             {(canEditIssue(user, issue) || isDeveloper(user)) && <Link href={`/dashboard/issues/${issue.id}/edit`} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso shadow-glow transition hover:bg-amber">{isDeveloper(user) && !canEditIssue(user, issue) ? "Update Status" : "Edit Bug Report"}</Link>}
-            <Link href="/dashboard/issues" className="rounded-full border border-bronze px-5 py-3 text-sm font-bold text-ivory transition hover:border-amber hover:text-amber">Back to Bug Reports</Link>
+            <Link href={returnPath} className="rounded-full border border-bronze px-5 py-3 text-sm font-bold text-ivory transition hover:border-amber hover:text-amber">Back to Bug Reports</Link>
           </div>
         </div>
 

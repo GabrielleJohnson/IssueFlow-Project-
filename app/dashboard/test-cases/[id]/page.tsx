@@ -7,9 +7,11 @@ import { DeleteTestCaseButton } from "@/components/test-cases/DeleteTestCaseButt
 import { getCurrentUser } from "@/lib/auth";
 import { canCreateIssue, canDeleteTestCase, canEditTestCase, canViewTestCase } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { safeListReturnPath } from "@/lib/productivity";
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 };
 
 const testCaseSelect = {
@@ -31,7 +33,7 @@ const testCaseSelect = {
   linkedIssue: { select: { id: true, title: true, severity: true, status: true, created_by: true, assigned_to: true } }
 };
 
-export default async function TestCaseDetailPage({ params }: PageProps) {
+export default async function TestCaseDetailPage({ params, searchParams }: PageProps) {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -39,6 +41,8 @@ export default async function TestCaseDetailPage({ params }: PageProps) {
   }
 
   const { id } = await params;
+  const { from } = await searchParams;
+  const returnPath = safeListReturnPath(from, "/dashboard/test-cases");
   const testCaseId = Number(id);
 
   if (!Number.isInteger(testCaseId)) {
@@ -63,7 +67,7 @@ export default async function TestCaseDetailPage({ params }: PageProps) {
           />
           <div className="flex flex-wrap gap-3">
             {canEditTestCase(user, testCase) && <Link href={`/dashboard/test-cases/${testCase.id}/edit`} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso shadow-glow transition hover:bg-amber">Edit Test Case</Link>}
-            <Link href="/dashboard/test-cases" className="rounded-full border border-bronze px-5 py-3 text-sm font-bold text-ivory transition hover:border-amber hover:text-amber">Back to Test Cases</Link>
+            <Link href={returnPath} className="rounded-full border border-bronze px-5 py-3 text-sm font-bold text-ivory transition hover:border-amber hover:text-amber">Back to Test Cases</Link>
           </div>
         </div>
 

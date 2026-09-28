@@ -200,6 +200,56 @@ Run the self-cleaning analytics accuracy and RBAC smoke test after building:
 npm.cmd run smoke:analytics
 ```
 
+## v0.6.0 Search, Filters & Productivity
+
+Bug Reports and Test Cases now use server-side search, filtering, logical sorting, and pagination over the complete role-authorized dataset.
+
+Bug Report search covers:
+
+- Exact references such as `IF-0004`
+- Title and summary
+- Environment/browser/device
+- Assignee username
+
+Bug Report filters:
+
+- Status and severity
+- Assignee, including Unassigned, for Admin and Tester views
+- Linked failed test or no failed-test link
+
+Test Case search covers:
+
+- Exact references such as `TC-0004`
+- Title
+- Structured feature/module
+- Description and preconditions
+
+Test Case filters:
+
+- Status and priority
+- Existing structured feature/module values
+- Linked or unlinked bug report
+
+Sorting and pagination:
+
+- Bug Reports: Recently Updated, Newest, Oldest, Severity, and Status
+- Test Cases: Recently Updated, Newest, Oldest, Priority, and Status
+- Severity and priority use `CRITICAL > HIGH > MEDIUM > LOW`, not alphabetical order.
+- Status sorts prioritize records needing attention and use creation time plus ID for stable ties.
+- Pages support 10, 25, or 50 rows and show the matching result range and total.
+
+List state is persisted in query parameters such as `q`, `status`, `severity`, `priority`, `assignee`, `module`, `linked`, `sort`, `page`, and `pageSize`. Applying a new search or filter returns to page 1. Detail-page return links preserve the originating list URL after validating it as a local IssueFlow list path.
+
+RBAC is always applied before list filters. Admins and Testers search their existing organization/QA scope. Developers remain limited to assigned and unassigned visible bugs and linked visible test cases; query parameters cannot expand that scope or leak hidden totals. The dedicated Assigned Bugs page remains unchanged.
+
+Empty states distinguish between a database with no visible records and a filtered view with no matches. Search and filter states provide Clear Search, Reset All, and active-view labels only when relevant.
+
+Run the v0.6.0 smoke suite after building:
+
+```powershell
+npm.cmd run smoke:productivity
+```
+
 ## Dashboard pages
 
 - `/dashboard`

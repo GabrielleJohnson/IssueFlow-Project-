@@ -12,7 +12,8 @@
     "db:studio": "prisma studio",
     "db:init": "node scripts/init-db.mjs",
     "db:seed-admin": "node scripts/seed-admin.mjs",
-    "smoke:analytics": "node scripts/smoke-v05.mjs"
+    "smoke:analytics": "node scripts/smoke-v05.mjs",
+    "smoke:productivity": "node scripts/smoke-v06.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

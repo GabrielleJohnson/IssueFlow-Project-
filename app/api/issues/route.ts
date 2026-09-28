@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { logIssueActivity } from "@/lib/activity";
 import { getCurrentUser } from "@/lib/auth";
 import { isIssueSeverity, isIssueStatus } from "@/lib/issueOptions";
-import { canCreateIssue, issueWhereForUser } from "@/lib/permissions";
+import { canCreateIssue } from "@/lib/permissions";
+import { listIssues, parseIssueListQuery } from "@/lib/productivity";
 import { prisma } from "@/lib/prisma";
 
 function issueSelect() {
@@ -27,20 +28,15 @@ function issueSelect() {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
 
   if (!user) {
     return NextResponse.json({ error: "You must be logged in to view bug reports." }, { status: 401 });
   }
 
-  const issues = await prisma.issue.findMany({
-    where: issueWhereForUser(user),
-    orderBy: { updated_at: "desc" },
-    select: issueSelect()
-  });
-
-  return NextResponse.json({ issues });
+  const result = await listIssues(user, parseIssueListQuery(request.nextUrl.searchParams));
+  return NextResponse.json(result);
 }
 
 export async function POST(request: NextRequest) {

@@ -1,7 +1,8 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { isTestCasePriority, isTestCaseStatus } from "@/lib/issueOptions";
-import { canCreateTestCase, canViewIssue, isDeveloper } from "@/lib/permissions";
+import { canCreateTestCase, canViewIssue } from "@/lib/permissions";
+import { listTestCases, parseTestCaseListQuery } from "@/lib/productivity";
 import { prisma } from "@/lib/prisma";
 
 function testCaseSelect() {
@@ -25,20 +26,15 @@ function testCaseSelect() {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
 
   if (!user) {
     return NextResponse.json({ error: "You must be logged in to view test cases." }, { status: 401 });
   }
 
-  const testCases = await prisma.testCase.findMany({
-    where: isDeveloper(user) ? { linkedIssue: { is: { OR: [{ assigned_to: user.id }, { assigned_to: null }] } } } : {},
-    orderBy: { updated_at: "desc" },
-    select: testCaseSelect()
-  });
-
-  return NextResponse.json({ testCases });
+  const result = await listTestCases(user, parseTestCaseListQuery(request.nextUrl.searchParams));
+  return NextResponse.json(result);
 }
 
 export async function POST(request: NextRequest) {
