@@ -25,6 +25,7 @@ export type IssueRecord = {
   created_by: number;
   assigned_to: number | null;
   linked_test_case_id: number | null;
+  origin_execution_id?: number | null;
   created_at: Date;
   updated_at: Date;
   creator: IssueUser;

@@ -20,6 +20,7 @@ function issueSelect() {
     created_by: true,
     assigned_to: true,
     linked_test_case_id: true,
+    origin_execution_id: true,
     created_at: true,
     updated_at: true,
     creator: { select: { id: true, username: true, email: true, role: true } },
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
   const status = String(body?.status ?? "OPEN");
   const assigned_to = body?.assigned_to ? Number(body.assigned_to) : null;
   const linked_test_case_id = body?.linked_test_case_id ? Number(body.linked_test_case_id) : null;
+  const origin_execution_id = body?.origin_execution_id ? Number(body.origin_execution_id) : null;
 
   if (!title || !description || !environment || !steps_to_reproduce || !expected_result || !actual_result) {
     return NextResponse.json({ error: "Bug title, summary, environment, reproduction steps, expected result, and actual result are required." }, { status: 400 });
@@ -90,6 +92,13 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (origin_execution_id) {
+    const execution = await prisma.testExecution.findUnique({ where: { id: origin_execution_id }, include: { bugReport: true } });
+    if (!execution || execution.status !== "FAILED") return NextResponse.json({ error: "Failed execution was not found." }, { status: 400 });
+    if (execution.bugReport) return NextResponse.json({ error: "A bug report already exists for this execution.", issueId: execution.bugReport.id }, { status: 409 });
+    if (execution.test_case_id && linked_test_case_id !== execution.test_case_id) return NextResponse.json({ error: "The linked test case must match the failed execution." }, { status: 400 });
+  }
+
   const issue = await prisma.issue.create({
     data: {
       title,
@@ -102,7 +111,8 @@ export async function POST(request: NextRequest) {
       status,
       created_by: user.id,
       assigned_to,
-      linked_test_case_id
+      linked_test_case_id,
+      origin_execution_id
     },
     select: issueSelect()
   });
@@ -115,6 +125,11 @@ export async function POST(request: NextRequest) {
 
   if (linked_test_case_id) {
     await logIssueActivity({ issueId: issue.id, actorId: user.id, actionType: "BUG_CREATED_FROM_FAILED_TEST", fieldName: "linked_test_case_id", oldValue: null, newValue: String(linked_test_case_id), message: `Bug report created from failed Test Case TC-${String(linked_test_case_id).padStart(4, "0")}.` });
+  }
+
+
+  if (origin_execution_id) {
+    await logIssueActivity({ issueId: issue.id, actorId: user.id, actionType: "BUG_CREATED_FROM_EXECUTION", fieldName: "origin_execution_id", oldValue: null, newValue: String(origin_execution_id), message: `Bug report created from failed execution EX-${String(origin_execution_id).padStart(4, "0")}.` });
   }
 
   return NextResponse.json({ issue }, { status: 201 });

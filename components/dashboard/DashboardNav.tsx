@@ -15,6 +15,8 @@ export function DashboardNav({ user }: DashboardNavProps) {
         { href: "/dashboard", label: "Dashboard" },
         { href: "/dashboard/issues", label: "Bug Reports" },
         { href: "/dashboard/test-cases", label: "Test Cases" },
+        { href: "/dashboard/test-suites", label: "Suites" },
+        { href: "/dashboard/test-runs", label: "Runs" },
         { href: "/dashboard/analytics", label: "Analytics" },
         { href: "/dashboard/users", label: "Users" }
       ]
@@ -23,6 +25,8 @@ export function DashboardNav({ user }: DashboardNavProps) {
           { href: "/dashboard", label: "Dashboard" },
           { href: "/dashboard/issues", label: "Bug Reports" },
           { href: "/dashboard/test-cases", label: "Test Cases" },
+          { href: "/dashboard/test-suites", label: "Suites" },
+          { href: "/dashboard/test-runs", label: "Runs" },
           { href: "/dashboard/analytics", label: "Analytics" }
         ]
       : [

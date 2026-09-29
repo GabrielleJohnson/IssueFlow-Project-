@@ -33,11 +33,13 @@ const issueSelect = {
   created_by: true,
   assigned_to: true,
   linked_test_case_id: true,
+  origin_execution_id: true,
   created_at: true,
   updated_at: true,
   creator: { select: { id: true, username: true, email: true, role: true } },
   assignee: { select: { id: true, username: true, email: true, role: true } },
   linkedTestCase: { select: { id: true, title: true, status: true, priority: true } },
+  originExecution: { select: { id: true, status: true, actual_result: true, test_case_reference: true, title_snapshot: true, run: { select: { id: true, suite_name: true, release_label: true, environment: true } } } },
   testCases: {
     orderBy: { updated_at: "desc" as const },
     select: { id: true, title: true, status: true, priority: true, updated_at: true }
@@ -86,9 +88,24 @@ export default async function IssueDetailPage({ params, searchParams }: PageProp
           <div className="mt-8 rounded-lg border border-ember/40 bg-ember/15 p-5 shadow-card">
             <h2 className="font-display text-xl font-semibold text-ivory">Created from a failed test case</h2>
             <p className="mt-2 text-sm text-beige">This bug report is linked to the failed QA scenario that exposed the defect.</p>
-            <Link href={`/dashboard/test-cases/${issue.linkedTestCase.id}`} className="mt-4 inline-flex font-semibold text-amber transition hover:text-coral">
-              TC-{issue.linkedTestCase.id.toString().padStart(4, "0")} - {issue.linkedTestCase.title}
-            </Link>
+            {isDeveloper(user) ? (
+              <p className="mt-4 font-semibold text-amber">
+                TC-{issue.linkedTestCase.id.toString().padStart(4, "0")} - {issue.linkedTestCase.title}
+              </p>
+            ) : (
+              <Link href={`/dashboard/test-cases/${issue.linkedTestCase.id}`} className="mt-4 inline-flex font-semibold text-amber transition hover:text-coral">
+                TC-{issue.linkedTestCase.id.toString().padStart(4, "0")} - {issue.linkedTestCase.title}
+              </Link>
+            )}
+          </div>
+        )}
+
+        {issue.originExecution && (
+          <div className="mt-8 rounded-lg border border-coral/40 bg-coral/10 p-5 shadow-card">
+            <h2 className="font-display text-xl font-semibold text-ivory">Originating failed execution</h2>
+            <p className="mt-2 text-sm leading-6 text-beige">{issue.originExecution.test_case_reference} · {issue.originExecution.title_snapshot} failed in {issue.originExecution.run.suite_name} for {issue.originExecution.run.release_label}.</p>
+            <div className="mt-4 flex flex-wrap gap-4 text-sm text-beige"><span>{issue.originExecution.run.environment}</span><span>Execution EX-{String(issue.originExecution.id).padStart(4, "0")}</span></div>
+            {!isDeveloper(user) && <Link href={`/dashboard/test-runs/${issue.originExecution.run.id}`} className="mt-4 inline-flex font-semibold text-amber transition hover:text-coral">View test run context</Link>}
           </div>
         )}
 

@@ -45,11 +45,13 @@ db.exec(`
     created_by INTEGER NOT NULL,
     assigned_to INTEGER,
     linked_test_case_id INTEGER,
+    origin_execution_id INTEGER,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
-    FOREIGN KEY (linked_test_case_id) REFERENCES test_cases(id) ON DELETE SET NULL ON UPDATE CASCADE
+    FOREIGN KEY (linked_test_case_id) REFERENCES test_cases(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (origin_execution_id) REFERENCES test_executions(id) ON DELETE SET NULL ON UPDATE CASCADE
   );
 `);
 
@@ -61,10 +63,15 @@ if (!columnExists("issues", "linked_test_case_id")) {
   db.exec("ALTER TABLE issues ADD COLUMN linked_test_case_id INTEGER;");
 }
 
+if (!columnExists("issues", "origin_execution_id")) {
+  db.exec("ALTER TABLE issues ADD COLUMN origin_execution_id INTEGER;");
+}
+
 db.exec(`
   CREATE INDEX IF NOT EXISTS issues_created_by_idx ON issues(created_by);
   CREATE INDEX IF NOT EXISTS issues_assigned_to_idx ON issues(assigned_to);
   CREATE INDEX IF NOT EXISTS issues_linked_test_case_id_idx ON issues(linked_test_case_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS issues_origin_execution_id_key ON issues(origin_execution_id);
 
   CREATE TABLE IF NOT EXISTS test_cases (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,6 +100,78 @@ if (!columnExists("test_cases", "feature_module")) {
 db.exec(`
   CREATE INDEX IF NOT EXISTS test_cases_created_by_idx ON test_cases(created_by);
   CREATE INDEX IF NOT EXISTS test_cases_linked_issue_id_idx ON test_cases(linked_issue_id);
+
+  CREATE TABLE IF NOT EXISTS test_suites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    created_by INTEGER NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS test_suites_created_by_idx ON test_suites(created_by);
+
+  CREATE TABLE IF NOT EXISTS test_suite_cases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    suite_id INTEGER NOT NULL,
+    test_case_id INTEGER NOT NULL,
+    added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (suite_id) REFERENCES test_suites(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (test_case_id) REFERENCES test_cases(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE (suite_id, test_case_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS test_suite_cases_test_case_id_idx ON test_suite_cases(test_case_id);
+
+  CREATE TABLE IF NOT EXISTS test_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    suite_id INTEGER,
+    suite_name TEXT NOT NULL,
+    release_label TEXT NOT NULL,
+    environment TEXT NOT NULL,
+    notes TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+    created_by INTEGER NOT NULL,
+    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (suite_id) REFERENCES test_suites(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS test_runs_suite_id_idx ON test_runs(suite_id);
+  CREATE INDEX IF NOT EXISTS test_runs_created_by_idx ON test_runs(created_by);
+
+  CREATE TABLE IF NOT EXISTS test_executions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id INTEGER NOT NULL,
+    test_case_id INTEGER,
+    test_case_reference TEXT NOT NULL,
+    title_snapshot TEXT NOT NULL,
+    description_snapshot TEXT NOT NULL,
+    feature_module_snapshot TEXT NOT NULL,
+    preconditions_snapshot TEXT NOT NULL,
+    test_steps_snapshot TEXT NOT NULL,
+    expected_result_snapshot TEXT NOT NULL,
+    priority_snapshot TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'NOT_RUN',
+    actual_result TEXT NOT NULL DEFAULT '',
+    executed_by INTEGER,
+    executed_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (run_id) REFERENCES test_runs(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (test_case_id) REFERENCES test_cases(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (executed_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    UNIQUE (run_id, test_case_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS test_executions_test_case_id_idx ON test_executions(test_case_id);
+  CREATE INDEX IF NOT EXISTS test_executions_executed_by_idx ON test_executions(executed_by);
+  CREATE INDEX IF NOT EXISTS test_executions_status_idx ON test_executions(status);
 
   CREATE TABLE IF NOT EXISTS attachments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

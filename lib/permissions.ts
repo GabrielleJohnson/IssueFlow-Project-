@@ -26,6 +26,9 @@ export type CommentPermissionTarget = {
   issue?: IssuePermissionTarget | null;
 };
 
+export type TestSuitePermissionTarget = { created_by: number };
+export type TestRunPermissionTarget = { created_by: number };
+
 export const normalIssueLifecycle = ["OPEN", "IN_PROGRESS", "IN_REVIEW", "RESOLVED", "CLOSED"] as const;
 export const reopenedIssueLifecycle = ["RESOLVED", "REOPENED", "IN_PROGRESS", "IN_REVIEW", "RESOLVED"] as const;
 
@@ -165,6 +168,34 @@ export function canEditTestCase(user: PermissionUser | null | undefined, _testCa
 }
 
 export function canDeleteTestCase(user: PermissionUser | null | undefined, _testCase?: TestCasePermissionTarget) {
+  return isAdmin(user);
+}
+
+export function canViewTestManagement(user?: PermissionUser | null) {
+  return isAdmin(user) || isTester(user);
+}
+
+export function canCreateTestSuite(user?: PermissionUser | null) {
+  return canViewTestManagement(user);
+}
+
+export function canEditTestSuite(user: PermissionUser | null | undefined, suite?: TestSuitePermissionTarget) {
+  return Boolean(user && (isAdmin(user) || (isTester(user) && (!suite || suite.created_by === user.id))));
+}
+
+export function canDeleteTestSuite(user: PermissionUser | null | undefined, suite?: TestSuitePermissionTarget) {
+  return canEditTestSuite(user, suite);
+}
+
+export function canCreateTestRun(user?: PermissionUser | null) {
+  return canViewTestManagement(user);
+}
+
+export function canExecuteTestRun(user?: PermissionUser | null) {
+  return canViewTestManagement(user);
+}
+
+export function canDeleteTestRun(user?: PermissionUser | null, _run?: TestRunPermissionTarget) {
   return isAdmin(user);
 }
 

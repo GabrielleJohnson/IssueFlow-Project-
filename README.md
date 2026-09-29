@@ -59,6 +59,43 @@ Issue creation uses the logged-in user as `created_by`. Admins can edit/delete a
 
 Test case creation uses the logged-in user as `created_by`. Admins and testers can create/edit test cases. Only admins can delete test cases. Developers can view test cases linked to bug reports they can access.
 
+## v0.7.0 Test Management & Execution
+
+Reusable Test Cases can now be organized into Test Suites and executed in historical Test Runs.
+
+- A Test Case may belong to multiple suites. Removing or deleting a suite never deletes its Test Cases.
+- Starting a run snapshots the suite membership and the execution-critical Test Case fields. Later suite or Test Case edits do not rewrite that run.
+- Each execution records `NOT_RUN`, `PASSED`, `FAILED`, or `BLOCKED`, plus actual-result notes, executor, and timestamp.
+- A new run is the regression/rerun workflow. Previous executions are never reset or overwritten.
+- Runs include a lightweight release/build label and environment; no release-planning system is introduced.
+- A failed execution can create one traced Bug Report. Duplicate bugs for the same execution are rejected.
+
+For backward compatibility, recording a run execution also updates the reusable Test Case's existing status and actual-result fields to its latest result. Historical truth remains in immutable execution records, and execution analytics use only v0.7 run data rather than interpreting older Test Case status values as history.
+
+Test management API routes:
+
+- `GET /api/test-suites`
+- `POST /api/test-suites`
+- `GET /api/test-suites/:id`
+- `PATCH /api/test-suites/:id`
+- `DELETE /api/test-suites/:id`
+- `POST /api/test-suites/:id/cases`
+- `DELETE /api/test-suites/:id/cases`
+- `GET /api/test-runs`
+- `POST /api/test-runs`
+- `GET /api/test-runs/:id`
+- `PATCH /api/test-runs/:id`
+- `DELETE /api/test-runs/:id` (Admin only)
+- `PATCH /api/test-executions/:id`
+
+Testers can manage their own suites, start runs, record results, and create bugs from failed executions. Admins can manage all suites and runs, including run deletion. Developers cannot browse or mutate QA management endpoints; they see execution context only through Bug Reports already permitted by their existing issue scope.
+
+Run the self-cleaning v0.7 execution and regression smoke suite after building:
+
+```powershell
+npm.cmd run smoke:execution
+```
+
 
 ## Evidence uploads
 
@@ -263,6 +300,13 @@ npm.cmd run smoke:productivity
 - `/dashboard/test-cases/new`
 - `/dashboard/test-cases/[id]`
 - `/dashboard/test-cases/[id]/edit`
+- `/dashboard/test-suites`
+- `/dashboard/test-suites/new`
+- `/dashboard/test-suites/[id]`
+- `/dashboard/test-suites/[id]/edit`
+- `/dashboard/test-runs`
+- `/dashboard/test-runs/new`
+- `/dashboard/test-runs/[id]`
 - `/dashboard/users` admin only
 
 All dashboard routes are protected and redirect unauthenticated users to `/login`.
@@ -310,6 +354,14 @@ Test cases:
 - `linked_issue_id`
 - `created_at`
 - `updated_at`
+
+Test management:
+
+- `test_suites` stores reusable suite metadata and creator ownership.
+- `test_suite_cases` is the many-to-many suite membership table with a uniqueness constraint per suite/Test Case pair.
+- `test_runs` stores the suite name, release/build, environment, notes, lifecycle, creator, and timestamps.
+- `test_executions` stores immutable Test Case definition snapshots plus per-run status, actual result, executor, and execution time.
+- `issues.origin_execution_id` is unique, providing a one-to-one failed execution to Bug Report origin link.
 
 
 Attachments:

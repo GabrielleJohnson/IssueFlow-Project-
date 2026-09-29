@@ -23,6 +23,7 @@ function issueSelect() {
     created_by: true,
     assigned_to: true,
     linked_test_case_id: true,
+    origin_execution_id: true,
     created_at: true,
     updated_at: true,
     creator: { select: { id: true, username: true, email: true, role: true } },

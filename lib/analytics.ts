@@ -55,6 +55,14 @@ export type AnalyticsData = {
     failedTests: number;
     linkedBugReports: number;
   }>;
+  executionAnalytics: {
+    totalExecutions: number;
+    executed: number;
+    passRate: number;
+    resultDistribution: Array<{ key: string; label: string; count: number }>;
+    frequentFailures: Array<{ reference: string; title: string; failures: number }>;
+    releaseResults: Array<{ release: string; passed: number; failed: number; blocked: number }>;
+  };
 };
 
 function labelFor(value: string) {
@@ -71,6 +79,7 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
     ? { linkedIssue: { is: issueWhere } }
     : {};
   const activityWhere: Prisma.IssueActivityWhereInput = { issue: { is: issueWhere } };
+  const executionWhere: Prisma.TestExecutionWhereInput = isDeveloper(user) ? { bugReport: { is: issueWhere } } : {};
   const meaningfulActions = [
     "ISSUE_CREATED",
     "STATUS_CHANGED",
@@ -97,7 +106,7 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
       })
     : Promise.resolve([]);
 
-  const [statusGroups, severityGroups, testGroups, unassignedBugs, recentActivity, reopenActivities, resolvedActivities, developers, problemTestCases] = await Promise.all([
+  const [statusGroups, severityGroups, testGroups, unassignedBugs, recentActivity, reopenActivities, resolvedActivities, developers, problemTestCases, executionGroups, executionRows] = await Promise.all([
     prisma.issue.groupBy({ by: ["status"], where: issueWhere, _count: { _all: true } }),
     prisma.issue.groupBy({ by: ["severity"], where: issueWhere, _count: { _all: true } }),
     prisma.testCase.groupBy({ by: ["status"], where: testCaseWhere, _count: { _all: true } }),
@@ -126,7 +135,9 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
         linked_issue_id: true,
         createdBugReports: { where: issueWhere, select: { id: true } }
       }
-    })
+    }),
+    prisma.testExecution.groupBy({ by: ["status"], where: executionWhere, _count: { _all: true } }),
+    prisma.testExecution.findMany({ where: executionWhere, orderBy: { executed_at: "desc" }, select: { test_case_reference: true, title_snapshot: true, status: true, run: { select: { release_label: true } } } })
   ]);
 
   const statusCounts = new Map(statusGroups.map((row) => [row.status, row._count._all]));
@@ -145,6 +156,22 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
   const reopenedIssueIds = new Set(reopenActivities.map((activity) => activity.issue_id));
   const verifiedReopenedBugs = [...reopenedIssueIds].filter((issueId) => resolvedIssueIds.has(issueId)).length;
   const areaMap = new Map<string, { failedTests: number; linkedBugIds: Set<number> }>();
+  const executionCounts = new Map(executionGroups.map((row) => [row.status, row._count._all]));
+  const failureMap = new Map<string, { title: string; failures: number }>();
+  const releaseMap = new Map<string, { passed: number; failed: number; blocked: number }>();
+
+  for (const execution of executionRows) {
+    if (execution.status === "FAILED") {
+      const failure = failureMap.get(execution.test_case_reference) ?? { title: execution.title_snapshot, failures: 0 };
+      failure.failures += 1;
+      failureMap.set(execution.test_case_reference, failure);
+    }
+    const release = releaseMap.get(execution.run.release_label) ?? { passed: 0, failed: 0, blocked: 0 };
+    if (execution.status === "PASSED") release.passed += 1;
+    if (execution.status === "FAILED") release.failed += 1;
+    if (execution.status === "BLOCKED") release.blocked += 1;
+    releaseMap.set(execution.run.release_label, release);
+  }
 
   for (const testCase of problemTestCases) {
     const moduleName = testCase.feature_module.trim() || "General";
@@ -217,6 +244,14 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
       .map(([module, area]) => ({ module, failedTests: area.failedTests, linkedBugReports: area.linkedBugIds.size }))
       .filter((area) => area.failedTests > 0 || area.linkedBugReports > 0)
       .sort((left, right) => right.failedTests - left.failedTests || right.linkedBugReports - left.linkedBugReports || left.module.localeCompare(right.module))
-      .slice(0, 6)
+      .slice(0, 6),
+    executionAnalytics: {
+      totalExecutions: [...executionCounts.values()].reduce((total, count) => total + count, 0),
+      executed: (executionCounts.get("PASSED") ?? 0) + (executionCounts.get("FAILED") ?? 0) + (executionCounts.get("BLOCKED") ?? 0),
+      passRate: ((executionCounts.get("PASSED") ?? 0) + (executionCounts.get("FAILED") ?? 0) + (executionCounts.get("BLOCKED") ?? 0)) ? Math.round(((executionCounts.get("PASSED") ?? 0) / ((executionCounts.get("PASSED") ?? 0) + (executionCounts.get("FAILED") ?? 0) + (executionCounts.get("BLOCKED") ?? 0))) * 1000) / 10 : 0,
+      resultDistribution: testCaseStatuses.map((status) => ({ key: status, label: labelFor(status), count: executionCounts.get(status) ?? 0 })),
+      frequentFailures: [...failureMap.entries()].map(([reference, item]) => ({ reference, ...item })).sort((a, b) => b.failures - a.failures || a.reference.localeCompare(b.reference)).slice(0, 5),
+      releaseResults: [...releaseMap.entries()].map(([release, counts]) => ({ release, ...counts })).slice(0, 8)
+    }
   };
 }

@@ -5,7 +5,7 @@ import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { SectionHeader } from "@/components/SectionHeader";
 import { DeleteTestCaseButton } from "@/components/test-cases/DeleteTestCaseButton";
 import { getCurrentUser } from "@/lib/auth";
-import { canCreateIssue, canDeleteTestCase, canEditTestCase, canViewTestCase } from "@/lib/permissions";
+import { canCreateIssue, canDeleteTestCase, canEditTestCase, canViewTestCase, canViewTestManagement } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { safeListReturnPath } from "@/lib/productivity";
 
@@ -30,7 +30,9 @@ const testCaseSelect = {
   created_at: true,
   updated_at: true,
   creator: { select: { id: true, username: true, email: true, role: true } },
-  linkedIssue: { select: { id: true, title: true, severity: true, status: true, created_by: true, assigned_to: true } }
+  linkedIssue: { select: { id: true, title: true, severity: true, status: true, created_by: true, assigned_to: true } },
+  suiteMemberships: { include: { suite: { select: { id: true, name: true } } }, orderBy: { added_at: "desc" as const } },
+  executions: { take: 10, orderBy: { created_at: "desc" as const }, include: { run: { select: { id: true, suite_name: true, release_label: true, environment: true } }, bugReport: { select: { id: true, title: true } } } }
 };
 
 export default async function TestCaseDetailPage({ params, searchParams }: PageProps) {
@@ -102,6 +104,13 @@ export default async function TestCaseDetailPage({ params, searchParams }: PageP
             </article>
           ))}
         </div>
+
+        {canViewTestManagement(user) && (
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <section className="rounded-lg border border-bronze bg-clay shadow-card"><div className="border-b border-bronze p-5"><h2 className="font-display text-xl font-semibold">Suite Membership</h2><p className="mt-1 text-sm text-beige">Reusable collections containing this definition.</p></div>{testCase.suiteMemberships.length===0?<p className="p-5 text-sm text-beige">This test case is not in a suite yet.</p>:<div className="divide-y divide-bronze/70">{testCase.suiteMemberships.map(item=><Link key={item.suite.id} href={`/dashboard/test-suites/${item.suite.id}`} className="block p-5 font-semibold text-amber transition hover:text-coral">TS-{String(item.suite.id).padStart(4,"0")} · {item.suite.name}</Link>)}</div>}</section>
+            <section className="rounded-lg border border-bronze bg-clay shadow-card"><div className="border-b border-bronze p-5"><h2 className="font-display text-xl font-semibold">Recent Executions</h2><p className="mt-1 text-sm text-beige">Historical results are preserved per run.</p></div>{testCase.executions.length===0?<p className="p-5 text-sm text-beige">No run executions have recorded this test case yet.</p>:<div className="divide-y divide-bronze/70">{testCase.executions.map(execution=><Link key={execution.id} href={`/dashboard/test-runs/${execution.run.id}`} className="flex items-center justify-between gap-3 p-5"><div><p className="font-semibold text-ivory">{execution.run.suite_name} · {execution.run.release_label}</p><p className="mt-1 text-sm text-beige">{execution.run.environment}{execution.bugReport?` · IF-${String(execution.bugReport.id).padStart(4,"0")}`:""}</p></div><Badge label={execution.status}/></Link>)}</div>}</section>
+          </div>
+        )}
 
         {canDeleteTestCase(user, testCase) && (
           <div className="mt-8 rounded-lg border border-bronze bg-clay p-5 shadow-card">

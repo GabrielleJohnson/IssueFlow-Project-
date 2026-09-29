@@ -3,12 +3,14 @@ export const issueSeverities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 export const issueStatuses = ["OPEN", "IN_PROGRESS", "IN_REVIEW", "RESOLVED", "REOPENED", "CLOSED"] as const;
 export const testCaseStatuses = ["NOT_RUN", "PASSED", "FAILED", "BLOCKED"] as const;
 export const testCasePriorities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
+export const testRunStatuses = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"] as const;
 
 export type UserRole = (typeof userRoles)[number];
 export type IssueSeverity = (typeof issueSeverities)[number];
 export type IssueStatus = (typeof issueStatuses)[number];
 export type TestCaseStatus = (typeof testCaseStatuses)[number];
 export type TestCasePriority = (typeof testCasePriorities)[number];
+export type TestRunStatus = (typeof testRunStatuses)[number];
 
 export function isUserRole(value: string): value is UserRole {
   return userRoles.includes(value as UserRole);
@@ -28,6 +30,10 @@ export function isTestCaseStatus(value: string): value is TestCaseStatus {
 
 export function isTestCasePriority(value: string): value is TestCasePriority {
   return testCasePriorities.includes(value as TestCasePriority);
+}
+
+export function isTestRunStatus(value: string): value is TestRunStatus {
+  return testRunStatuses.includes(value as TestRunStatus);
 }
 
 export function formatEnumLabel(value: string) {

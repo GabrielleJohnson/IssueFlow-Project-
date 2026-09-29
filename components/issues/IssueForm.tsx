@@ -5,7 +5,7 @@ import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import { formatEnumLabel, issueSeverities, issueStatuses } from "@/lib/issueOptions";
 import type { IssueRecord, IssueUser, TestCaseRecord } from "@/lib/issueTypes";
 
-type IssuePrefill = Partial<Pick<IssueRecord, "title" | "description" | "environment" | "steps_to_reproduce" | "expected_result" | "actual_result" | "linked_test_case_id">>;
+type IssuePrefill = Partial<Pick<IssueRecord, "title" | "description" | "environment" | "steps_to_reproduce" | "expected_result" | "actual_result" | "linked_test_case_id" | "origin_execution_id">>;
 
 type IssueFormProps = {
   mode: "create" | "edit";
@@ -104,7 +104,8 @@ export function IssueForm({ mode, issue, users, testCases, prefill, statusOnly =
       severity: String(formData.get("severity") ?? "MEDIUM"),
       status: String(formData.get("status") ?? "OPEN"),
       assigned_to: String(formData.get("assigned_to") ?? "") || null,
-      linked_test_case_id: String(formData.get("linked_test_case_id") ?? "") || null
+      linked_test_case_id: String(formData.get("linked_test_case_id") ?? "") || null,
+      origin_execution_id: String(formData.get("origin_execution_id") ?? "") || null
     };
 
     const response = await fetch(isEdit ? `/api/issues/${issue?.id}` : "/api/issues", {
@@ -164,6 +165,7 @@ export function IssueForm({ mode, issue, users, testCases, prefill, statusOnly =
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 rounded-lg border border-bronze bg-clay p-5 shadow-card sm:grid-cols-2">
+      <input type="hidden" name="origin_execution_id" value={issue?.origin_execution_id ?? prefill?.origin_execution_id ?? ""} />
       <label className="sm:col-span-2">
         <span className="mb-2 block text-sm font-semibold text-beige">Bug title</span>
         <input className="field" name="title" defaultValue={issue?.title ?? prefill?.title} placeholder="Checkout total recalculates after loyalty credit" required />

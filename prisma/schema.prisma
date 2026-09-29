@@ -20,6 +20,9 @@ model User {
   attachments      Attachment[]    @relation("UploadedAttachments")
   comments         IssueComment[]  @relation("AuthoredComments")
   activities       IssueActivity[] @relation("IssueActivityActor")
+  createdSuites    TestSuite[]     @relation("CreatedTestSuites")
+  createdRuns      TestRun[]       @relation("CreatedTestRuns")
+  testExecutions   TestExecution[] @relation("ExecutedBy")
 
   @@map("users")
 }
@@ -37,6 +40,7 @@ model Issue {
   created_by          Int
   assigned_to         Int?
   linked_test_case_id Int?
+  origin_execution_id Int?            @unique
   created_at          DateTime        @default(now())
   updated_at          DateTime        @updatedAt
   creator             User            @relation("CreatedIssues", fields: [created_by], references: [id])
@@ -46,30 +50,113 @@ model Issue {
   attachments         Attachment[]
   comments            IssueComment[]
   activities          IssueActivity[]
+  originExecution     TestExecution?  @relation("IssueOriginExecution", fields: [origin_execution_id], references: [id], onDelete: SetNull)
 
   @@map("issues")
 }
 
 model TestCase {
-  id                Int      @id @default(autoincrement())
+  id                Int             @id @default(autoincrement())
   title             String
   description       String
-  feature_module    String   @default("General")
+  feature_module    String          @default("General")
   preconditions     String
   test_steps        String
   expected_result   String
   actual_result     String
-  status            String   @default("NOT_RUN")
-  priority          String   @default("MEDIUM")
+  status            String          @default("NOT_RUN")
+  priority          String          @default("MEDIUM")
   created_by        Int
   linked_issue_id   Int?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
-  creator           User     @relation("CreatedTestCases", fields: [created_by], references: [id])
-  linkedIssue       Issue?   @relation("TestCaseLinkedIssue", fields: [linked_issue_id], references: [id])
-  createdBugReports Issue[]  @relation("IssueFromFailedTest")
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+  creator           User            @relation("CreatedTestCases", fields: [created_by], references: [id])
+  linkedIssue       Issue?          @relation("TestCaseLinkedIssue", fields: [linked_issue_id], references: [id])
+  createdBugReports Issue[]         @relation("IssueFromFailedTest")
+  suiteMemberships  TestSuiteCase[]
+  executions        TestExecution[]
 
   @@map("test_cases")
+}
+
+model TestSuite {
+  id          Int             @id @default(autoincrement())
+  name        String
+  description String          @default("")
+  created_by  Int
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @updatedAt
+  creator     User            @relation("CreatedTestSuites", fields: [created_by], references: [id])
+  memberships TestSuiteCase[]
+  runs        TestRun[]
+
+  @@index([created_by])
+  @@map("test_suites")
+}
+
+model TestSuiteCase {
+  id           Int       @id @default(autoincrement())
+  suite_id     Int
+  test_case_id Int
+  added_at     DateTime  @default(now())
+  suite        TestSuite @relation(fields: [suite_id], references: [id], onDelete: Cascade)
+  testCase     TestCase  @relation(fields: [test_case_id], references: [id], onDelete: Cascade)
+
+  @@unique([suite_id, test_case_id])
+  @@index([test_case_id])
+  @@map("test_suite_cases")
+}
+
+model TestRun {
+  id            Int             @id @default(autoincrement())
+  suite_id      Int?
+  suite_name    String
+  release_label String
+  environment   String
+  notes         String          @default("")
+  status        String          @default("IN_PROGRESS")
+  created_by    Int
+  started_at    DateTime        @default(now())
+  completed_at  DateTime?
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+  suite         TestSuite?      @relation(fields: [suite_id], references: [id], onDelete: SetNull)
+  creator       User            @relation("CreatedTestRuns", fields: [created_by], references: [id])
+  executions    TestExecution[]
+
+  @@index([suite_id])
+  @@index([created_by])
+  @@map("test_runs")
+}
+
+model TestExecution {
+  id                       Int       @id @default(autoincrement())
+  run_id                   Int
+  test_case_id             Int?
+  test_case_reference      String
+  title_snapshot           String
+  description_snapshot     String
+  feature_module_snapshot  String
+  preconditions_snapshot   String
+  test_steps_snapshot      String
+  expected_result_snapshot String
+  priority_snapshot        String
+  status                   String    @default("NOT_RUN")
+  actual_result            String    @default("")
+  executed_by              Int?
+  executed_at              DateTime?
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
+  run                      TestRun   @relation(fields: [run_id], references: [id], onDelete: Cascade)
+  testCase                 TestCase? @relation(fields: [test_case_id], references: [id], onDelete: SetNull)
+  executor                 User?     @relation("ExecutedBy", fields: [executed_by], references: [id], onDelete: SetNull)
+  bugReport                Issue?    @relation("IssueOriginExecution")
+
+  @@unique([run_id, test_case_id])
+  @@index([test_case_id])
+  @@index([executed_by])
+  @@index([status])
+  @@map("test_executions")
 }
 
 model Attachment {
