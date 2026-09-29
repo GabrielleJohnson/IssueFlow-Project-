@@ -16,19 +16,21 @@ export function DashboardContent({ user, action, includeTopPadding = false }: Da
   return (
     <div className={includeTopPadding ? "pt-24" : ""}>
       <section id="dashboard" className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <SectionHeader
-            eyebrow="Dashboard"
-            title="Fast triage for every defect that matters."
-            description="IssueFlow keeps high-signal QA context visible: severity, linked test coverage, owners, and the release risk behind each issue."
-          />
+        <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <SectionHeader
+              eyebrow="Dashboard"
+              title="Fast triage for every defect that matters."
+              description="IssueFlow keeps high-signal QA context visible: severity, linked test coverage, owners, and the release risk behind each issue."
+            />
+          </div>
           {(user || action) && (
-            <div className="rounded-lg border border-bronze bg-clay p-4 shadow-card lg:min-w-72">
+            <div className="w-full min-w-0 rounded-lg border border-bronze bg-clay p-4 shadow-card lg:w-80 lg:flex-none">
               {user && (
                 <div className="mb-4">
                   <p className="text-sm text-beige">Signed in as</p>
-                  <p className="mt-1 font-semibold text-ivory">{user.username}</p>
-                  <p className="text-sm text-beige">{user.email}</p>
+                  <p className="mt-1 max-w-full font-semibold text-ivory [overflow-wrap:anywhere]">{user.username}</p>
+                  <p className="max-w-full text-sm text-beige [overflow-wrap:anywhere]">{user.email}</p>
                 </div>
               )}
               {action}

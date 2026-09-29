@@ -52,11 +52,18 @@ export default async function UsersPage() {
               <tbody>
                 {users.map((account) => (
                   <tr key={account.id} className="border-t border-bronze/70">
-                    <td className="px-5 py-4 font-semibold text-ivory">{account.username}</td>
-                    <td className="px-5 py-4 text-beige">{account.email}</td>
+                    <td className="max-w-64 px-5 py-4 font-semibold text-ivory [overflow-wrap:anywhere]">{account.username}</td>
+                    <td className="max-w-72 px-5 py-4 text-beige [overflow-wrap:anywhere]">{account.email}</td>
                     <td className="px-5 py-4"><Badge label={account.role} /></td>
                     <td className="px-5 py-4 text-beige">{new Date(account.created_at).toLocaleString()}</td>
-                    <td className="px-5 py-4"><UserRoleSelect userId={account.id} currentRole={account.role} /></td>
+                    <td className="px-5 py-4">
+                      <UserRoleSelect
+                        userId={account.id}
+                        username={account.username}
+                        currentRole={account.role}
+                        isCurrentUser={account.id === user.id}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>

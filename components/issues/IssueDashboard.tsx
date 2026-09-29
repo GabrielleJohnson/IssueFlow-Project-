@@ -46,18 +46,20 @@ export function IssueDashboard({ issues, testCases, stats, user }: IssueDashboar
   return (
     <div className="pt-24">
       <section id="dashboard" className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <SectionHeader
-            eyebrow={`${formatEnumLabel(user.role)} Dashboard`}
-            title={roleDashboardTitle(user.role)}
-            description={roleDashboardDescription(user.role)}
-          />
-          <div className="rounded-lg border border-bronze bg-clay p-4 shadow-card lg:min-w-72">
+        <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <SectionHeader
+              eyebrow={`${formatEnumLabel(user.role)} Dashboard`}
+              title={roleDashboardTitle(user.role)}
+              description={roleDashboardDescription(user.role)}
+            />
+          </div>
+          <div className="w-full min-w-0 rounded-lg border border-bronze bg-clay p-4 shadow-card lg:w-80 lg:flex-none">
             <p className="text-sm text-beige">Signed in as</p>
-            <p className="mt-1 font-semibold text-ivory">{user.username}</p>
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <p className="text-sm text-beige">{user.email}</p>
-              <Badge label={user.role} />
+            <p className="mt-1 max-w-full font-semibold text-ivory [overflow-wrap:anywhere]">{user.username}</p>
+            <div className="mt-2 flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:justify-between lg:flex-col xl:flex-row">
+              <p className="min-w-0 max-w-full text-sm text-beige [overflow-wrap:anywhere]">{user.email}</p>
+              <span className="shrink-0"><Badge label={user.role} /></span>
             </div>
           </div>
         </div>

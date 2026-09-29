@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { DashboardContent } from "@/components/dashboard/DashboardContent";
+import { DashboardFooter } from "@/components/dashboard/DashboardFooter";
 import { LandingAnimations } from "@/components/landing/LandingAnimations";
 import { severityBreakdown } from "@/data/mockData";
 import { getCurrentUser } from "@/lib/auth";
@@ -21,7 +22,8 @@ export default async function Home() {
   const user = await getCurrentUser();
 
   return (
-    <main className="min-h-screen overflow-hidden bg-espresso text-ivory">
+    <>
+      <main className="min-h-screen overflow-hidden bg-espresso text-ivory">
       <LandingAnimations />
       <header className="fixed left-0 right-0 top-0 z-20 border-b border-bronze/70 bg-espresso/78 backdrop-blur-xl">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
@@ -115,9 +117,10 @@ export default async function Home() {
         </div>
       </section>
 
-      <DashboardContent />
-    </main>
+        <DashboardContent />
+      </main>
+      <DashboardFooter />
+    </>
   );
 }
-
 
