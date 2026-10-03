@@ -417,6 +417,32 @@ npm.cmd run db:init
 
 That command creates or upgrades the local SQLite tables expected by the Prisma client.
 
+## Playwright end-to-end tests
+
+The Playwright suite adds browser-level Chromium coverage for authentication, role boundaries, Admin role confirmation, Bug Report and Test Case productivity controls, the failed-execution-to-Bug lifecycle, immutable Test Run history, responsive account identity, and shared footer placement.
+
+Install dependencies and the required browser once:
+
+```powershell
+npm.cmd install
+npx.cmd playwright install chromium
+```
+
+Run the suite:
+
+```powershell
+npm.cmd run test:e2e
+npm.cmd run test:e2e:headed
+npm.cmd run test:e2e:ui
+npm.cmd run test:e2e:report
+```
+
+Playwright automatically starts IssueFlow on `http://127.0.0.1:3318`. It uses the existing SQLite initializer with an explicit E2E-only path to create the dedicated ignored database `prisma/e2e.db`, recreates recognizable `E2E-` users before a run, and removes synthetic records during global teardown. It never resets or deletes `prisma/dev.db` or normal development data.
+
+Failure screenshots and traces are written under `test-results/`; the HTML report is written to `playwright-report/`. Both locations are ignored by git. The initial browser scope is Chromium, while the Playwright project structure can accept additional browsers later.
+
+The existing `smoke:*` scripts remain API and integration regression checks. Playwright complements them by driving the rendered UI and asserting user-visible navigation, controls, layout, and workflow outcomes.
+
 
 
 

@@ -1,10 +1,12 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const dbPath = join(__dirname, "..", "prisma", "dev.db");
+const dbPath = process.env.ISSUEFLOW_DB_PATH
+  ? resolve(process.env.ISSUEFLOW_DB_PATH)
+  : join(__dirname, "..", "prisma", "dev.db");
 const uploadsPath = join(__dirname, "..", "uploads", "issues");
 
 mkdirSync(dirname(dbPath), { recursive: true });

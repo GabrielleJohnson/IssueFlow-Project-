@@ -15,7 +15,11 @@
     "smoke:rbac": "node --no-warnings scripts/smoke-role-confirmation.mjs",
     "smoke:analytics": "node scripts/smoke-v05.mjs",
     "smoke:productivity": "node scripts/smoke-v06.mjs",
-    "smoke:execution": "node scripts/smoke-v07.mjs"
+    "smoke:execution": "node scripts/smoke-v07.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -27,6 +31,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^20.17.6",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -39,4 +44,3 @@
     "typescript": "^6.0.3"
   }
 }
-

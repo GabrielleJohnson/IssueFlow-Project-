@@ -54,12 +54,12 @@ export function IssueDashboard({ issues, testCases, stats, user }: IssueDashboar
               description={roleDashboardDescription(user.role)}
             />
           </div>
-          <div className="w-full min-w-0 rounded-lg border border-bronze bg-clay p-4 shadow-card lg:w-80 lg:flex-none">
+          <div data-testid="signed-in-card" className="w-full min-w-0 rounded-lg border border-bronze bg-clay p-4 shadow-card lg:w-80 lg:flex-none">
             <p className="text-sm text-beige">Signed in as</p>
-            <p className="mt-1 max-w-full font-semibold text-ivory [overflow-wrap:anywhere]">{user.username}</p>
+            <p data-testid="signed-in-username" className="mt-1 max-w-full font-semibold text-ivory [overflow-wrap:anywhere]">{user.username}</p>
             <div className="mt-2 flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:justify-between lg:flex-col xl:flex-row">
-              <p className="min-w-0 max-w-full text-sm text-beige [overflow-wrap:anywhere]">{user.email}</p>
-              <span className="shrink-0"><Badge label={user.role} /></span>
+              <p data-testid="signed-in-email" className="min-w-0 max-w-full text-sm text-beige [overflow-wrap:anywhere]">{user.email}</p>
+              <span data-testid="signed-in-role" className="shrink-0"><Badge label={user.role} /></span>
             </div>
           </div>
         </div>
