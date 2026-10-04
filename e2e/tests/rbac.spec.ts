@@ -42,6 +42,8 @@ test("Tester sees QA workspaces but cannot enter Admin user management", async (
   await expect(page.getByRole("link", { name: "Test Cases", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Suites", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Runs", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Coverage", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Releases", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Users", exact: true })).toHaveCount(0);
 
   await page.goto("/dashboard/users");
@@ -69,15 +71,27 @@ test("Developer keeps restricted navigation and can advance an assigned defect",
 
   await loginAs("developer");
   await page.goto("/dashboard");
-  await expect(page.getByRole("link", { name: "Assigned Bugs" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Users" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Suites" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Runs" })).toHaveCount(0);
+  const navigation = page.getByRole("navigation");
+  await expect(navigation.getByRole("link", { name: "Assigned Bugs", exact: true })).toBeVisible();
+  await expect(navigation.getByRole("link", { name: "Users", exact: true })).toHaveCount(0);
+  await expect(navigation.getByRole("link", { name: "Suites", exact: true })).toHaveCount(0);
+  await expect(navigation.getByRole("link", { name: "Runs", exact: true })).toHaveCount(0);
+  await expect(navigation.getByRole("link", { name: "Coverage", exact: true })).toHaveCount(0);
+  await expect(navigation.getByRole("link", { name: "Releases", exact: true })).toHaveCount(0);
 
   await page.goto("/dashboard/users");
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.goto("/dashboard/test-suites");
   await expect(page).toHaveURL(/\/dashboard$/);
+  await page.goto("/dashboard/requirements");
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.goto("/dashboard/releases");
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  const requirementResponse = await page.request.post("/api/requirements", { data: { title: "Forbidden Developer Requirement" } });
+  expect(requirementResponse.status()).toBe(403);
+  const releaseResponse = await page.request.post("/api/releases", { data: { name: "Forbidden Developer Release" } });
+  expect(releaseResponse.status()).toBe(403);
 
   await page.goto(`/dashboard/issues/${issue.id}`);
   await page.getByRole("link", { name: "Update Status" }).click();

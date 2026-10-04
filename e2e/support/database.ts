@@ -26,6 +26,8 @@ export async function e2eUser(key: keyof typeof E2E_USERS) {
 }
 
 export async function clearE2EData() {
+  await prisma.releaseRequirement.deleteMany();
+  await prisma.requirementTestCase.deleteMany();
   await prisma.testCase.updateMany({ data: { linked_issue_id: null } });
   await prisma.issue.updateMany({ data: { linked_test_case_id: null, origin_execution_id: null } });
   await prisma.issueActivity.deleteMany();
@@ -34,8 +36,10 @@ export async function clearE2EData() {
   await prisma.issue.deleteMany();
   await prisma.testExecution.deleteMany();
   await prisma.testRun.deleteMany();
+  await prisma.release.deleteMany();
   await prisma.testSuiteCase.deleteMany();
   await prisma.testSuite.deleteMany();
   await prisma.testCase.deleteMany();
+  await prisma.requirement.deleteMany();
   await prisma.user.deleteMany();
 }

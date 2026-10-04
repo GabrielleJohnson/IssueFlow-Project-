@@ -42,3 +42,43 @@ test("long account identity remains contained on narrow dashboards", async ({ pa
     await expect(page.getByRole("contentinfo")).toBeVisible();
   }
 });
+
+test("mobile navigation preserves role-aware access without overflow", async ({ page, loginAs }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAs("tester");
+  await page.goto("/dashboard");
+
+  await expect(page.getByTestId("desktop-dashboard-navigation")).toBeHidden();
+  const trigger = page.getByRole("button", { name: "Open navigation" });
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await trigger.click();
+  await expect(page.getByRole("button", { name: "Close navigation" }).first()).toHaveAttribute("aria-expanded", "true");
+
+  const menu = page.getByTestId("mobile-dashboard-navigation");
+  for (const label of ["Dashboard", "Bug Reports", "Test Cases", "Suites", "Runs", "Coverage", "Releases", "Analytics"]) {
+    await expect(menu.getByRole("link", { name: label, exact: true })).toBeVisible();
+  }
+  await expect(menu.getByRole("link", { name: "Users", exact: true })).toHaveCount(0);
+  await expect(menu.getByRole("button", { name: "Logout" })).toBeVisible();
+
+  await menu.getByRole("link", { name: "Coverage", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard\/requirements$/);
+  await expect(page.getByTestId("mobile-dashboard-navigation")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open navigation" })).toHaveAttribute("aria-expanded", "false");
+
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("mobile-dashboard-navigation")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open navigation" })).toBeFocused();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+
+  await loginAs("developer");
+  await page.goto("/dashboard");
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  const developerMenu = page.getByTestId("mobile-dashboard-navigation");
+  await expect(developerMenu.getByRole("link", { name: "Assigned Bugs", exact: true })).toBeVisible();
+  await expect(developerMenu.getByRole("link", { name: "Coverage", exact: true })).toHaveCount(0);
+  await expect(developerMenu.getByRole("link", { name: "Releases", exact: true })).toHaveCount(0);
+  await expect(developerMenu.getByRole("link", { name: "Users", exact: true })).toHaveCount(0);
+});

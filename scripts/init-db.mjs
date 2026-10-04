@@ -130,6 +130,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS test_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     suite_id INTEGER,
+    release_id INTEGER,
     suite_name TEXT NOT NULL,
     release_label TEXT NOT NULL,
     environment TEXT NOT NULL,
@@ -141,6 +142,7 @@ db.exec(`
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (suite_id) REFERENCES test_suites(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE SET NULL ON UPDATE CASCADE,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE
   );
 
@@ -222,6 +224,70 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS issue_activities_issue_id_idx ON issue_activities(issue_id);
   CREATE INDEX IF NOT EXISTS issue_activities_actor_id_idx ON issue_activities(actor_id);
+`);
+
+if (!columnExists("test_runs", "release_id")) {
+  db.exec("ALTER TABLE test_runs ADD COLUMN release_id INTEGER;");
+}
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS test_runs_release_id_idx ON test_runs(release_id);
+
+  CREATE TABLE IF NOT EXISTS requirements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    feature_module TEXT NOT NULL DEFAULT 'General',
+    priority TEXT NOT NULL DEFAULT 'MEDIUM',
+    status TEXT NOT NULL DEFAULT 'DRAFT',
+    created_by INTEGER NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS requirements_created_by_idx ON requirements(created_by);
+  CREATE INDEX IF NOT EXISTS requirements_feature_module_idx ON requirements(feature_module);
+  CREATE INDEX IF NOT EXISTS requirements_status_idx ON requirements(status);
+
+  CREATE TABLE IF NOT EXISTS requirement_test_cases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    requirement_id INTEGER NOT NULL,
+    test_case_id INTEGER NOT NULL,
+    linked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (requirement_id) REFERENCES requirements(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (test_case_id) REFERENCES test_cases(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE (requirement_id, test_case_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS requirement_test_cases_test_case_id_idx ON requirement_test_cases(test_case_id);
+
+  CREATE TABLE IF NOT EXISTS releases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'PLANNING',
+    target_date DATETIME,
+    created_by INTEGER NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS releases_created_by_idx ON releases(created_by);
+  CREATE INDEX IF NOT EXISTS releases_status_idx ON releases(status);
+
+  CREATE TABLE IF NOT EXISTS release_requirements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    release_id INTEGER NOT NULL,
+    requirement_id INTEGER NOT NULL,
+    linked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (requirement_id) REFERENCES requirements(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE (release_id, requirement_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS release_requirements_requirement_id_idx ON release_requirements(requirement_id);
 `);
 
 db.close();

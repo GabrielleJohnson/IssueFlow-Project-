@@ -15,7 +15,7 @@ type DashboardContentProps = {
 export function DashboardContent({ user, action, includeTopPadding = false }: DashboardContentProps) {
   return (
     <div className={includeTopPadding ? "pt-24" : ""}>
-      <section id="dashboard" className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
+      <section id="public-dashboard-preview" data-testid="public-dashboard-preview" className="mx-auto max-w-7xl scroll-mt-20 px-5 py-20 sm:px-8">
         <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0 flex-1">
             <SectionHeader

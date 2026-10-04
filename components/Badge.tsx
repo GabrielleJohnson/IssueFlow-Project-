@@ -32,7 +32,19 @@ const styles: Record<string, string> = {
   NOT_RUN: "border-bronze bg-espresso/80 text-beige",
   ADMIN: "border-coral/40 bg-coral/15 text-[#ffb29f]",
   TESTER: "border-amber/40 bg-amber/15 text-amber",
-  DEVELOPER: "border-sage/40 bg-sage/15 text-sage"
+  DEVELOPER: "border-sage/40 bg-sage/15 text-sage",
+  DRAFT: "border-bronze bg-espresso/80 text-beige",
+  READY: "border-sage/40 bg-sage/15 text-sage",
+  VERIFIED: "border-sage/40 bg-sage/15 text-sage",
+  PLANNING: "border-bronze bg-espresso/80 text-beige",
+  IN_TESTING: "border-amber/40 bg-amber/15 text-amber",
+  RELEASED: "border-sage/40 bg-sage/15 text-sage",
+  NOT_COVERED: "border-ember/40 bg-ember/15 text-[#ff9aa2]",
+  COVERED_NOT_EXECUTED: "border-amber/40 bg-amber/15 text-amber",
+  PASSING: "border-sage/40 bg-sage/15 text-sage",
+  FAILING: "border-ember/40 bg-ember/15 text-[#ff9aa2]",
+  NOT_READY: "border-ember/40 bg-ember/15 text-[#ff9aa2]",
+  AT_RISK: "border-amber/40 bg-amber/15 text-amber"
 };
 
 export function Badge({ label }: BadgeProps) {

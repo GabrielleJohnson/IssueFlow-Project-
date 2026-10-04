@@ -28,6 +28,8 @@ export type CommentPermissionTarget = {
 
 export type TestSuitePermissionTarget = { created_by: number };
 export type TestRunPermissionTarget = { created_by: number };
+export type RequirementPermissionTarget = { created_by: number };
+export type ReleasePermissionTarget = { created_by: number };
 
 export const normalIssueLifecycle = ["OPEN", "IN_PROGRESS", "IN_REVIEW", "RESOLVED", "CLOSED"] as const;
 export const reopenedIssueLifecycle = ["RESOLVED", "REOPENED", "IN_PROGRESS", "IN_REVIEW", "RESOLVED"] as const;
@@ -197,6 +199,42 @@ export function canExecuteTestRun(user?: PermissionUser | null) {
 
 export function canDeleteTestRun(user?: PermissionUser | null, _run?: TestRunPermissionTarget) {
   return isAdmin(user);
+}
+
+export function canViewRequirements(user?: PermissionUser | null) {
+  return isAdmin(user) || isTester(user);
+}
+
+export function canCreateRequirement(user?: PermissionUser | null) {
+  return canViewRequirements(user);
+}
+
+export function canEditRequirement(user: PermissionUser | null | undefined, _requirement?: RequirementPermissionTarget) {
+  return canViewRequirements(user);
+}
+
+export function canDeleteRequirement(user: PermissionUser | null | undefined, _requirement?: RequirementPermissionTarget) {
+  return isAdmin(user);
+}
+
+export function canViewReleases(user?: PermissionUser | null) {
+  return isAdmin(user) || isTester(user);
+}
+
+export function canCreateRelease(user?: PermissionUser | null) {
+  return canViewReleases(user);
+}
+
+export function canEditRelease(user: PermissionUser | null | undefined, _release?: ReleasePermissionTarget) {
+  return canViewReleases(user);
+}
+
+export function canDeleteRelease(user: PermissionUser | null | undefined, _release?: ReleasePermissionTarget) {
+  return isAdmin(user);
+}
+
+export function canExportRelease(user?: PermissionUser | null) {
+  return canViewReleases(user);
 }
 
 export function canUploadEvidence(user: PermissionUser | null | undefined, issue: IssuePermissionTarget) {

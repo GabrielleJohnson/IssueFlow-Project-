@@ -287,6 +287,32 @@ Run the v0.6.0 smoke suite after building:
 npm.cmd run smoke:productivity
 ```
 
+## QA coverage and release readiness (v0.9.0)
+
+Requirements are lightweight QA verification targets rather than backlog items. Admins and Testers can create them, assign status and priority, and link multiple Test Cases. A Test Case can verify multiple Requirements through the `requirement_test_cases` join table.
+
+Coverage is derived, never typed manually:
+
+- **Not Covered:** no linked Test Cases.
+- **Covered / Not Executed:** coverage exists, but at least one linked Test Case has no relevant execution or is Not Run.
+- **Passing:** the latest relevant execution for every linked Test Case passed.
+- **Failing:** at least one latest relevant execution failed and none are blocked.
+- **Blocked:** at least one latest relevant execution is blocked; this is the highest-precedence state.
+
+Global Requirement coverage uses the latest execution for each linked Test Case. Release coverage only considers executions from Test Runs associated with that Release. Latest means `executed_at`, then update/create time and ID for a stable tie-break. Requirement links are current traceability and never rewrite immutable Test Run snapshots.
+
+QA Releases combine an explicit Requirement scope with existing Test Runs. The Release lifecycle (`Planning`, `In Testing`, `Ready`, or `Released`) is separate from the computed readiness assessment:
+
+- **Not Ready:** no scoped Requirements or runs, incomplete/non-passing Requirement coverage, failed/blocked/not-run execution, or an unresolved Critical defect.
+- **At Risk:** hard blockers are clear, but unresolved non-critical defects remain.
+- **Ready:** all scoped Requirements pass, all executions pass, and no unresolved defects remain.
+
+CSV reports are available from Release detail pages. They include release/readiness, Requirement, feature/module, coverage, Test Case, latest release result, and linked defect data. Release defect relevance includes defects from associated release executions and defects linked through Test Cases in the current Requirement scope; closed defects remain traceable but do not count as open readiness risks. Each Test Case row lists relevant defects in ascending Issue ID order, with multiple references, severities, and statuses aligned using `; ` separators. A defect from an associated release execution that is outside the current Requirement scope is retained as a defect-only row rather than silently omitted. Values are quoted and escaped, and cells beginning with spreadsheet formula characters are prefixed safely. Reports are authorized for Admin and Tester accounts.
+
+Developers do not gain Requirements or Releases workspace access. Bug Reports they can already view show the necessary current Requirement/release context as read-only text.
+
+The Playwright suite covers Requirement creation/linking, URL-backed filters and reset behavior, coverage transitions, Release creation/run association, readiness changes, CSV security, Developer RBAC, and 390px/320px long-name overflow using only `prisma/e2e.db`.
+
 ## Dashboard pages
 
 - `/dashboard`
@@ -307,6 +333,14 @@ npm.cmd run smoke:productivity
 - `/dashboard/test-runs`
 - `/dashboard/test-runs/new`
 - `/dashboard/test-runs/[id]`
+- `/dashboard/requirements`
+- `/dashboard/requirements/new`
+- `/dashboard/requirements/[id]`
+- `/dashboard/requirements/[id]/edit`
+- `/dashboard/releases`
+- `/dashboard/releases/new`
+- `/dashboard/releases/[id]`
+- `/dashboard/releases/[id]/edit`
 - `/dashboard/users` admin only
 
 All dashboard routes are protected and redirect unauthenticated users to `/login`.

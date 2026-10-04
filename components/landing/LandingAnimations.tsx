@@ -19,6 +19,8 @@ export function LandingAnimations() {
 
     let targetScroll = window.scrollY;
     let scrollTween: gsap.core.Tween | null = null;
+    const previousScrollBehavior = document.documentElement.style.scrollBehavior;
+    document.documentElement.style.scrollBehavior = "auto";
 
     const ctx = gsap.context(() => {
       gsap.from(".hero-copy > *", {
@@ -66,7 +68,7 @@ export function LandingAnimations() {
       scrollTween = gsap.to(window, {
         duration,
         ease: "power3.out",
-        scrollTo: { y: targetScroll, autoKill: true },
+        scrollTo: { y: targetScroll, autoKill: false },
         overwrite: "auto",
         onUpdate: () => ScrollTrigger.update()
       });
@@ -99,7 +101,8 @@ export function LandingAnimations() {
       }
 
       event.preventDefault();
-      scrollToPosition((target as HTMLElement).offsetTop - 72, 1.25);
+      const targetTop = (target as HTMLElement).getBoundingClientRect().top + window.scrollY;
+      scrollToPosition(targetTop - 72, 1.25);
     }
 
     function syncTargetScroll() {
@@ -114,6 +117,7 @@ export function LandingAnimations() {
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("scroll", syncTargetScroll);
       document.removeEventListener("click", handleAnchorClick);
+      document.documentElement.style.scrollBehavior = previousScrollBehavior;
       scrollTween?.kill();
       ctx.revert();
       ScrollTrigger.getAll().forEach((trigger) => trigger.kill());

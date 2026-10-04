@@ -40,13 +40,13 @@ export default async function Home() {
           {user ? (
             <LogoutButton />
           ) : (
-            <div className="flex items-center gap-3">
-              <Link href="/login" className="hidden text-sm font-semibold text-beige transition hover:text-ivory sm:inline-flex">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <Link href="/login" className="inline-flex px-1 py-2 text-sm font-semibold text-beige transition hover:text-ivory">
                 Login
               </Link>
               <Link
                 href="/register"
-                className="rounded-full border border-coral/50 px-4 py-2 text-sm font-semibold text-ivory shadow-glow transition hover:bg-coral hover:text-espresso"
+                className="rounded-full border border-coral/50 px-3 py-2 text-sm font-semibold text-ivory shadow-glow transition hover:bg-coral hover:text-espresso sm:px-4"
               >
                 Register
               </Link>
@@ -78,12 +78,12 @@ export default async function Home() {
               QA-focused issue tracking without the clutter.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link
-                href={user ? "/dashboard" : "/login"}
+              <a
+                href="#public-dashboard-preview"
                 className="rounded-full bg-coral px-6 py-3 text-center text-sm font-bold text-espresso shadow-glow transition hover:bg-amber"
               >
                 View Dashboard
-              </Link>
+              </a>
               <a
                 href="#test-cases"
                 className="rounded-full border border-bronze bg-clay/80 px-6 py-3 text-center text-sm font-bold text-ivory transition hover:border-amber hover:text-amber"
@@ -123,4 +123,3 @@ export default async function Home() {
     </>
   );
 }
-

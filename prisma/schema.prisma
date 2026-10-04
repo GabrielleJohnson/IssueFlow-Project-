@@ -23,6 +23,8 @@ model User {
   createdSuites    TestSuite[]     @relation("CreatedTestSuites")
   createdRuns      TestRun[]       @relation("CreatedTestRuns")
   testExecutions   TestExecution[] @relation("ExecutedBy")
+  createdRequirements Requirement[] @relation("CreatedRequirements")
+  createdReleases  Release[]       @relation("CreatedReleases")
 
   @@map("users")
 }
@@ -75,6 +77,7 @@ model TestCase {
   createdBugReports Issue[]         @relation("IssueFromFailedTest")
   suiteMemberships  TestSuiteCase[]
   executions        TestExecution[]
+  requirementLinks RequirementTestCase[]
 
   @@map("test_cases")
 }
@@ -110,6 +113,7 @@ model TestSuiteCase {
 model TestRun {
   id            Int             @id @default(autoincrement())
   suite_id      Int?
+  release_id    Int?
   suite_name    String
   release_label String
   environment   String
@@ -121,12 +125,78 @@ model TestRun {
   created_at    DateTime        @default(now())
   updated_at    DateTime        @updatedAt
   suite         TestSuite?      @relation(fields: [suite_id], references: [id], onDelete: SetNull)
+  release       Release?        @relation(fields: [release_id], references: [id], onDelete: SetNull)
   creator       User            @relation("CreatedTestRuns", fields: [created_by], references: [id])
   executions    TestExecution[]
 
   @@index([suite_id])
+  @@index([release_id])
   @@index([created_by])
   @@map("test_runs")
+}
+
+model Requirement {
+  id             Int                       @id @default(autoincrement())
+  title          String
+  description    String                    @default("")
+  feature_module String                    @default("General")
+  priority       String                    @default("MEDIUM")
+  status         String                    @default("DRAFT")
+  created_by     Int
+  created_at     DateTime                  @default(now())
+  updated_at     DateTime                  @updatedAt
+  creator        User                      @relation("CreatedRequirements", fields: [created_by], references: [id])
+  testCaseLinks  RequirementTestCase[]
+  releaseLinks   ReleaseRequirement[]
+
+  @@index([created_by])
+  @@index([feature_module])
+  @@index([status])
+  @@map("requirements")
+}
+
+model RequirementTestCase {
+  id             Int         @id @default(autoincrement())
+  requirement_id Int
+  test_case_id   Int
+  linked_at      DateTime    @default(now())
+  requirement    Requirement @relation(fields: [requirement_id], references: [id], onDelete: Cascade)
+  testCase       TestCase    @relation(fields: [test_case_id], references: [id], onDelete: Cascade)
+
+  @@unique([requirement_id, test_case_id])
+  @@index([test_case_id])
+  @@map("requirement_test_cases")
+}
+
+model Release {
+  id          Int                  @id @default(autoincrement())
+  name        String
+  description String               @default("")
+  status      String               @default("PLANNING")
+  target_date DateTime?
+  created_by  Int
+  created_at  DateTime             @default(now())
+  updated_at  DateTime             @updatedAt
+  creator     User                 @relation("CreatedReleases", fields: [created_by], references: [id])
+  runs        TestRun[]
+  requirements ReleaseRequirement[]
+
+  @@index([created_by])
+  @@index([status])
+  @@map("releases")
+}
+
+model ReleaseRequirement {
+  id             Int         @id @default(autoincrement())
+  release_id     Int
+  requirement_id Int
+  linked_at      DateTime    @default(now())
+  release        Release     @relation(fields: [release_id], references: [id], onDelete: Cascade)
+  requirement    Requirement @relation(fields: [requirement_id], references: [id], onDelete: Cascade)
+
+  @@unique([release_id, requirement_id])
+  @@index([requirement_id])
+  @@map("release_requirements")
 }
 
 model TestExecution {

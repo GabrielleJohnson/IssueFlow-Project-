@@ -1,6 +1,6 @@
 ﻿import Link from "next/link";
 import { Badge } from "@/components/Badge";
-import { roleDashboardDescription, roleDashboardTitle } from "@/components/dashboard/DashboardNav";
+import { roleDashboardDescription, roleDashboardTitle } from "@/lib/dashboardCopy";
 import { SectionHeader } from "@/components/SectionHeader";
 import { canCreateIssue, canCreateTestCase, canEditIssue, canViewAnalytics, isAdmin, isDeveloper, isTester } from "@/lib/permissions";
 import { formatEnumLabel } from "@/lib/issueOptions";

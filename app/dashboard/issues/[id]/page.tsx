@@ -38,7 +38,7 @@ const issueSelect = {
   updated_at: true,
   creator: { select: { id: true, username: true, email: true, role: true } },
   assignee: { select: { id: true, username: true, email: true, role: true } },
-  linkedTestCase: { select: { id: true, title: true, status: true, priority: true } },
+  linkedTestCase: { select: { id: true, title: true, status: true, priority: true, requirementLinks: { include: { requirement: { select: { id: true, title: true, feature_module: true, releaseLinks: { include: { release: { select: { id: true, name: true } } } } } } } } } },
   originExecution: { select: { id: true, status: true, actual_result: true, test_case_reference: true, title_snapshot: true, run: { select: { id: true, suite_name: true, release_label: true, environment: true } } } },
   testCases: {
     orderBy: { updated_at: "desc" as const },
@@ -107,6 +107,14 @@ export default async function IssueDetailPage({ params, searchParams }: PageProp
             <div className="mt-4 flex flex-wrap gap-4 text-sm text-beige"><span>{issue.originExecution.run.environment}</span><span>Execution EX-{String(issue.originExecution.id).padStart(4, "0")}</span></div>
             {!isDeveloper(user) && <Link href={`/dashboard/test-runs/${issue.originExecution.run.id}`} className="mt-4 inline-flex font-semibold text-amber transition hover:text-coral">View test run context</Link>}
           </div>
+        )}
+
+        {issue.linkedTestCase && issue.linkedTestCase.requirementLinks.length > 0 && (
+          <section className="mt-8 rounded-lg border border-bronze bg-clay p-5 shadow-card">
+            <h2 className="font-display text-xl font-semibold text-ivory">Requirement and release context</h2>
+            <p className="mt-2 text-sm text-beige">Current QA traceability for the Test Case linked to this defect. Historical execution snapshots remain unchanged.</p>
+            <div className="mt-4 space-y-3">{issue.linkedTestCase.requirementLinks.map(({ requirement }) => <div key={requirement.id} className="rounded-lg border border-bronze bg-espresso/45 p-4"><p className="font-semibold text-ivory [overflow-wrap:anywhere]">{isDeveloper(user) ? <span>REQ-{String(requirement.id).padStart(4,"0")} · {requirement.title}</span> : <Link href={`/dashboard/requirements/${requirement.id}`} className="transition hover:text-coral">REQ-{String(requirement.id).padStart(4,"0")} · {requirement.title}</Link>}</p><p className="mt-1 text-sm text-beige">{requirement.feature_module}{requirement.releaseLinks.length ? ` · Releases: ${requirement.releaseLinks.map(item => item.release.name).join(", ")}` : " · Not in a QA Release"}</p></div>)}</div>
+          </section>
         )}
 
         <div className="mt-8 grid gap-4 md:grid-cols-4">
