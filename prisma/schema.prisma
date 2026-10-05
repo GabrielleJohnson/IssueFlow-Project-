@@ -3,28 +3,29 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL_POOLED")
+  directUrl = env("DATABASE_URL")
 }
 
 model User {
-  id               Int             @id @default(autoincrement())
-  username         String
-  email            String          @unique
-  password_hash    String
-  role             String          @default("TESTER")
-  created_at       DateTime        @default(now())
-  createdIssues    Issue[]         @relation("CreatedIssues")
-  assignedIssues   Issue[]         @relation("AssignedIssues")
-  createdTestCases TestCase[]      @relation("CreatedTestCases")
-  attachments      Attachment[]    @relation("UploadedAttachments")
-  comments         IssueComment[]  @relation("AuthoredComments")
-  activities       IssueActivity[] @relation("IssueActivityActor")
-  createdSuites    TestSuite[]     @relation("CreatedTestSuites")
-  createdRuns      TestRun[]       @relation("CreatedTestRuns")
-  testExecutions   TestExecution[] @relation("ExecutedBy")
-  createdRequirements Requirement[] @relation("CreatedRequirements")
-  createdReleases  Release[]       @relation("CreatedReleases")
+  id                  Int             @id @default(autoincrement())
+  username            String
+  email               String          @unique
+  password_hash       String
+  role                String          @default("TESTER")
+  created_at          DateTime        @default(now())
+  createdIssues       Issue[]         @relation("CreatedIssues")
+  assignedIssues      Issue[]         @relation("AssignedIssues")
+  createdTestCases    TestCase[]      @relation("CreatedTestCases")
+  attachments         Attachment[]    @relation("UploadedAttachments")
+  comments            IssueComment[]  @relation("AuthoredComments")
+  activities          IssueActivity[] @relation("IssueActivityActor")
+  createdSuites       TestSuite[]     @relation("CreatedTestSuites")
+  createdRuns         TestRun[]       @relation("CreatedTestRuns")
+  testExecutions      TestExecution[] @relation("ExecutedBy")
+  createdRequirements Requirement[]   @relation("CreatedRequirements")
+  createdReleases     Release[]       @relation("CreatedReleases")
 
   @@map("users")
 }
@@ -54,31 +55,36 @@ model Issue {
   activities          IssueActivity[]
   originExecution     TestExecution?  @relation("IssueOriginExecution", fields: [origin_execution_id], references: [id], onDelete: SetNull)
 
+  @@index([created_by])
+  @@index([assigned_to])
+  @@index([linked_test_case_id])
   @@map("issues")
 }
 
 model TestCase {
-  id                Int             @id @default(autoincrement())
+  id                Int                   @id @default(autoincrement())
   title             String
   description       String
-  feature_module    String          @default("General")
+  feature_module    String                @default("General")
   preconditions     String
   test_steps        String
   expected_result   String
   actual_result     String
-  status            String          @default("NOT_RUN")
-  priority          String          @default("MEDIUM")
+  status            String                @default("NOT_RUN")
+  priority          String                @default("MEDIUM")
   created_by        Int
   linked_issue_id   Int?
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
-  creator           User            @relation("CreatedTestCases", fields: [created_by], references: [id])
-  linkedIssue       Issue?          @relation("TestCaseLinkedIssue", fields: [linked_issue_id], references: [id])
-  createdBugReports Issue[]         @relation("IssueFromFailedTest")
+  created_at        DateTime              @default(now())
+  updated_at        DateTime              @updatedAt
+  creator           User                  @relation("CreatedTestCases", fields: [created_by], references: [id])
+  linkedIssue       Issue?                @relation("TestCaseLinkedIssue", fields: [linked_issue_id], references: [id])
+  createdBugReports Issue[]               @relation("IssueFromFailedTest")
   suiteMemberships  TestSuiteCase[]
   executions        TestExecution[]
-  requirementLinks RequirementTestCase[]
+  requirementLinks  RequirementTestCase[]
 
+  @@index([created_by])
+  @@index([linked_issue_id])
   @@map("test_cases")
 }
 
@@ -136,16 +142,16 @@ model TestRun {
 }
 
 model Requirement {
-  id             Int                       @id @default(autoincrement())
+  id             Int                   @id @default(autoincrement())
   title          String
-  description    String                    @default("")
-  feature_module String                    @default("General")
-  priority       String                    @default("MEDIUM")
-  status         String                    @default("DRAFT")
+  description    String                @default("")
+  feature_module String                @default("General")
+  priority       String                @default("MEDIUM")
+  status         String                @default("DRAFT")
   created_by     Int
-  created_at     DateTime                  @default(now())
-  updated_at     DateTime                  @updatedAt
-  creator        User                      @relation("CreatedRequirements", fields: [created_by], references: [id])
+  created_at     DateTime              @default(now())
+  updated_at     DateTime              @updatedAt
+  creator        User                  @relation("CreatedRequirements", fields: [created_by], references: [id])
   testCaseLinks  RequirementTestCase[]
   releaseLinks   ReleaseRequirement[]
 
@@ -169,16 +175,16 @@ model RequirementTestCase {
 }
 
 model Release {
-  id          Int                  @id @default(autoincrement())
-  name        String
-  description String               @default("")
-  status      String               @default("PLANNING")
-  target_date DateTime?
-  created_by  Int
-  created_at  DateTime             @default(now())
-  updated_at  DateTime             @updatedAt
-  creator     User                 @relation("CreatedReleases", fields: [created_by], references: [id])
-  runs        TestRun[]
+  id           Int                  @id @default(autoincrement())
+  name         String
+  description  String               @default("")
+  status       String               @default("PLANNING")
+  target_date  DateTime?
+  created_by   Int
+  created_at   DateTime             @default(now())
+  updated_at   DateTime             @updatedAt
+  creator      User                 @relation("CreatedReleases", fields: [created_by], references: [id])
+  runs         TestRun[]
   requirements ReleaseRequirement[]
 
   @@index([created_by])
@@ -242,6 +248,8 @@ model Attachment {
   uploader      User     @relation("UploadedAttachments", fields: [uploaded_by], references: [id])
   issue         Issue    @relation(fields: [issue_id], references: [id], onDelete: Cascade)
 
+  @@index([uploaded_by])
+  @@index([issue_id])
   @@map("attachments")
 }
 
@@ -255,6 +263,8 @@ model IssueComment {
   issue      Issue    @relation(fields: [issue_id], references: [id], onDelete: Cascade)
   author     User     @relation("AuthoredComments", fields: [author_id], references: [id])
 
+  @@index([issue_id])
+  @@index([author_id])
   @@map("issue_comments")
 }
 
@@ -271,5 +281,7 @@ model IssueActivity {
   issue       Issue    @relation(fields: [issue_id], references: [id], onDelete: Cascade)
   actor       User?    @relation("IssueActivityActor", fields: [actor_id], references: [id], onDelete: SetNull)
 
+  @@index([issue_id])
+  @@index([actor_id])
   @@map("issue_activities")
 }

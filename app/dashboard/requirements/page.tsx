@@ -61,9 +61,9 @@ export default async function RequirementsPage({ searchParams }: Props) {
         ? {
             OR: [
               ...(referenceId ? [{ id: referenceId }] : []),
-              { title: { contains: q } },
-              { description: { contains: q } },
-              { feature_module: { contains: q } },
+              { title: { contains: q, mode: "insensitive" as const } },
+              { description: { contains: q, mode: "insensitive" as const } },
+              { feature_module: { contains: q, mode: "insensitive" as const } },
             ],
           }
         : {},

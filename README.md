@@ -27,7 +27,7 @@ IssueFlow keeps that context connected. Testers can document expected behavior, 
 - Next.js 16 and React 19
 - TypeScript
 - Tailwind CSS
-- Prisma with SQLite
+- Prisma with PostgreSQL
 - bcryptjs and jose for local authentication
 - GSAP for landing-page animations
 - Playwright for end-to-end testing
@@ -72,19 +72,19 @@ Permissions are enforced by the application APIs as well as reflected in the int
 
 ## Testing & QA
 
-IssueFlow uses Playwright end-to-end tests for rendered workflows and smoke/integration scripts for lifecycle, permissions, analytics, filtering, and test execution. Automated browser tests use an isolated SQLite database, and the defect-lifecycle smoke suite uses a disposable database so development data is not replaced.
+IssueFlow uses Playwright end-to-end tests for rendered workflows and smoke/integration scripts for lifecycle, permissions, analytics, filtering, and test execution. Automated tests use isolated PostgreSQL schemas, while GitHub Actions provisions a disposable PostgreSQL service so development data is never replaced.
 
 Manual QA was also part of development, especially for responsive layouts, keyboard behavior, role boundaries, traceability, CSV reports, and historical Test Run behavior.
 
 ## Quick Start
 
-Requirements: Node.js 22.13 or newer and npm.
+Requirements: Node.js 22.13 or newer, npm, and a PostgreSQL database. Set `DATABASE_URL` to the direct connection URL and `DATABASE_URL_POOLED` to the pooled application URL.
 
 ```powershell
 npm.cmd install
 Copy-Item .env.example .env
-npm.cmd run db:init
 npm.cmd run db:generate
+npm.cmd run db:init
 npm.cmd run dev
 ```
 

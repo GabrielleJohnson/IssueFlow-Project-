@@ -17,12 +17,12 @@ test("Bug Report search, filters, clear, and Reset all stay synchronized", async
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
 
   await page.goto("/dashboard/issues");
-  await page.getByLabel("Search bug reports").fill(title);
+  await page.getByLabel("Search bug reports").fill(title.toLowerCase());
   await page.locator('select[name="status"]').selectOption("OPEN");
   await page.locator('select[name="severity"]').selectOption("HIGH");
   await page.getByRole("button", { name: "Apply view" }).click();
 
-  await expect(page).toHaveURL(/q=E2E-/);
+  await expect(page).toHaveURL(/q=e2e-/);
   await expect(page).toHaveURL(/status=OPEN/);
   await expect(page).toHaveURL(/severity=HIGH/);
   await expect(page.locator('select[name="status"]')).toHaveValue("OPEN");
@@ -66,7 +66,7 @@ test("Test Case search, filters, and Reset all stay synchronized", async ({ page
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
 
   await page.goto("/dashboard/test-cases");
-  await page.getByLabel("Search test cases").fill(title);
+  await page.getByLabel("Search test cases").fill(title.toLowerCase());
   await page.locator('select[name="status"]').selectOption("NOT_RUN");
   await page.locator('select[name="priority"]').selectOption("HIGH");
   await page.getByRole("button", { name: "Apply view" }).click();

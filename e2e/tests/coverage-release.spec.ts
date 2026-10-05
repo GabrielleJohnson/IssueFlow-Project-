@@ -21,13 +21,13 @@ test("Requirements trace to tests and drive deterministic Release readiness and 
   const suite = await prisma.testSuite.create({ data: { name: `${stamp}-Suite`, description: "Synthetic release suite.", created_by: tester.id } });
   const run = await prisma.testRun.create({
     data: {
-      suite_id: suite.id, suite_name: suite.name, release_label: `${stamp}-build`, environment: "Chromium E2E / isolated SQLite", status: "COMPLETED", created_by: tester.id, completed_at: new Date(),
+      suite_id: suite.id, suite_name: suite.name, release_label: `${stamp}-build`, environment: "Chromium E2E / isolated PostgreSQL", status: "COMPLETED", created_by: tester.id, completed_at: new Date(),
       executions: { create: { test_case_id: testCase.id, test_case_reference: `TC-${String(testCase.id).padStart(4, "0")}`, title_snapshot: testCase.title, description_snapshot: testCase.description, feature_module_snapshot: testCase.feature_module, preconditions_snapshot: testCase.preconditions, test_steps_snapshot: testCase.test_steps, expected_result_snapshot: testCase.expected_result, priority_snapshot: testCase.priority, status: "FAILED", actual_result: "Synthetic blocker", executed_by: tester.id, executed_at: new Date() } }
     }, include: { executions: true }
   });
   const historicalRun = await prisma.testRun.create({
     data: {
-      suite_id: suite.id, suite_name: `${stamp}-Historical-Suite`, release_label: `${stamp}-earlier-build`, environment: "Chromium E2E / historical SQLite", status: "COMPLETED", created_by: tester.id, completed_at: new Date(Date.now() - 60_000),
+      suite_id: suite.id, suite_name: `${stamp}-Historical-Suite`, release_label: `${stamp}-earlier-build`, environment: "Chromium E2E / historical PostgreSQL", status: "COMPLETED", created_by: tester.id, completed_at: new Date(Date.now() - 60_000),
       executions: { create: { test_case_id: testCase.id, test_case_reference: `TC-${String(testCase.id).padStart(4, "0")}`, title_snapshot: testCase.title, description_snapshot: testCase.description, feature_module_snapshot: testCase.feature_module, preconditions_snapshot: testCase.preconditions, test_steps_snapshot: testCase.test_steps, expected_result_snapshot: testCase.expected_result, priority_snapshot: testCase.priority, status: "FAILED", actual_result: "Historical failure created a defect.", executed_by: tester.id, executed_at: new Date(Date.now() - 60_000) } }
     }, include: { executions: true }
   });

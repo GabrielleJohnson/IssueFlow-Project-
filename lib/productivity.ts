@@ -158,10 +158,10 @@ export function issueWhereForList(user: PermissionUser, query: IssueListQuery): 
       ? { id: referenceId }
       : {
           OR: [
-            { title: { contains: query.q } },
-            { description: { contains: query.q } },
-            { environment: { contains: query.q } },
-            { assignee: { is: { username: { contains: query.q } } } }
+            { title: { contains: query.q, mode: "insensitive" } },
+            { description: { contains: query.q, mode: "insensitive" } },
+            { environment: { contains: query.q, mode: "insensitive" } },
+            { assignee: { is: { username: { contains: query.q, mode: "insensitive" } } } }
           ]
         });
   }
@@ -191,10 +191,10 @@ export function testCaseWhereForList(user: PermissionUser, query: TestCaseListQu
       ? { id: referenceId }
       : {
           OR: [
-            { title: { contains: query.q } },
-            { feature_module: { contains: query.q } },
-            { description: { contains: query.q } },
-            { preconditions: { contains: query.q } }
+            { title: { contains: query.q, mode: "insensitive" } },
+            { feature_module: { contains: query.q, mode: "insensitive" } },
+            { description: { contains: query.q, mode: "insensitive" } },
+            { preconditions: { contains: query.q, mode: "insensitive" } }
           ]
         });
   }

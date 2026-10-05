@@ -1,10 +1,11 @@
-import path from "node:path";
+import { configureTestDatabase } from "../../scripts/lib/postgres-test-database.mjs";
 
 export const E2E_PORT = 3318;
 export const E2E_BASE_URL = `http://127.0.0.1:${E2E_PORT}`;
-export const E2E_DATABASE_PATH = path.join(process.cwd(), "prisma", "e2e.db");
-// Prisma resolves relative SQLite URLs from the schema directory.
-export const E2E_DATABASE_URL = "file:./e2e.db";
+export const E2E_DATABASE_SCHEMA = "issueflow_e2e";
+const e2eDatabase = configureTestDatabase(E2E_DATABASE_SCHEMA);
+export const E2E_DATABASE_URL = e2eDatabase.directUrl;
+export const E2E_DATABASE_URL_POOLED = e2eDatabase.pooledUrl;
 export const E2E_AUTH_SECRET = "issueflow-e2e-local-only-secret";
 export const E2E_PASSWORD = "IssueFlow-E2E-Only-2026!";
 

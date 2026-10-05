@@ -1,37 +1,10 @@
 const { execFileSync, spawn } = await import("node:child_process");
 const { writeFile, mkdir, readFile, rm } = await import("node:fs/promises");
 const { join } = await import("node:path");
+const { resetTestDatabase } = await import("./lib/postgres-test-database.mjs");
 
-const smokeDatabasePath = join(process.cwd(), "prisma", "smoke-v04.db");
-const smokeDatabaseUrl = "file:./smoke-v04.db";
-
-process.env.DATABASE_URL = smokeDatabaseUrl;
 process.env.AUTH_SECRET = "issueflow-local-development-secret";
-
-async function removeSmokeDatabase() {
-  for (const path of [smokeDatabasePath, `${smokeDatabasePath}-journal`, `${smokeDatabasePath}-shm`, `${smokeDatabasePath}-wal`]) {
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      try {
-        await rm(path, { force: true });
-        break;
-      } catch (error) {
-        if (!["EBUSY", "EPERM"].includes(error.code) || attempt === 19) throw error;
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      }
-    }
-  }
-}
-
-await removeSmokeDatabase();
-
-execFileSync(process.execPath, ["scripts/init-db.mjs"], {
-  cwd: process.cwd(),
-  env: {
-    ...process.env,
-    ISSUEFLOW_DB_PATH: smokeDatabasePath
-  },
-  stdio: "inherit"
-});
+await resetTestDatabase("issueflow_smoke_v04");
 
 const { PrismaClient } = await import("@prisma/client");
 const bcrypt = await import("bcryptjs");
@@ -241,6 +214,6 @@ console.log(JSON.stringify({
   await prisma.$disconnect();
   if (pngPath) await rm(pngPath, { force: true });
 
-  await removeSmokeDatabase();
+  await resetTestDatabase("issueflow_smoke_v04");
 }
 

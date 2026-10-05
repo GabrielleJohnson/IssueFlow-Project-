@@ -1,4 +1,5 @@
-process.env.DATABASE_URL = `file:${process.cwd().replace(/\\/g, "/")}/prisma/dev.db`;
+const { resetTestDatabase } = await import("./lib/postgres-test-database.mjs");
+await resetTestDatabase("issueflow_smoke_v06");
 
 const { spawn } = await import("node:child_process");
 const { PrismaClient } = await import("@prisma/client");

@@ -45,7 +45,7 @@ export default async function ReleasesPage({ searchParams }: Props) {
   const where: Prisma.ReleaseWhereInput = {
     AND: [
       q
-        ? { OR: [{ name: { contains: q } }, { description: { contains: q } }] }
+        ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { description: { contains: q, mode: "insensitive" as const } }] }
         : {},
       status ? { status } : {},
     ],

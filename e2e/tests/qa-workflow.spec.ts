@@ -54,7 +54,7 @@ test("Tester execution failure becomes a traced bug with preserved historical ru
 
   await page.getByRole("link", { name: "Start New Run" }).click();
   await page.getByLabel("Release / build").fill("E2E-build-1");
-  await page.getByLabel("Environment").fill("Chromium E2E / isolated SQLite");
+  await page.getByLabel("Environment").fill("Chromium E2E / isolated PostgreSQL");
   await page.getByLabel("Run notes").fill("Initial immutable snapshot.");
   await page.getByRole("button", { name: "Start Test Run" }).click();
   await expect(page).toHaveURL(/\/dashboard\/test-runs\/\d+$/);

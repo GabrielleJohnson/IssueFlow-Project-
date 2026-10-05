@@ -43,9 +43,9 @@ export default async function TestRunsPage({ searchParams }: Props) {
   if (q)
     filters.push({
       OR: [
-        { suite_name: { contains: q } },
-        { release_label: { contains: q } },
-        { environment: { contains: q } },
+        { suite_name: { contains: q, mode: "insensitive" } },
+        { release_label: { contains: q, mode: "insensitive" } },
+        { environment: { contains: q, mode: "insensitive" } },
       ],
     });
   if (status) filters.push({ status });

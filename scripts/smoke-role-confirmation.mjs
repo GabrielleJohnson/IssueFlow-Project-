@@ -1,19 +1,15 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { createRoleChangeState, roleChangeReducer } from "../lib/roleChangeState.ts";
+import { resetTestDatabase } from "./lib/postgres-test-database.mjs";
 
 const baseUrl = "http://127.0.0.1:3214";
-const temporaryDirectory = await mkdtemp(join(tmpdir(), "issueflow-rbac-"));
-const databasePath = join(temporaryDirectory, "rbac.db");
-const databaseUrl = `file:${databasePath.replace(/\\/g, "/")}`;
 const authSecret = "issueflow-rbac-smoke-secret";
 const password = "RoleSafety123!";
+let prisma;
 let server;
 
 function cookieFrom(response) {
@@ -52,6 +48,9 @@ async function changeRole(cookie, userId, role) {
 }
 
 try {
+  await resetTestDatabase("issueflow_smoke_rbac");
+  prisma = new PrismaClient();
+
   let state = createRoleChangeState("ADMIN");
   state = roleChangeReducer(state, { type: "select", role: "DEVELOPER" });
   assert.equal(state.savedRole, "ADMIN", "Selecting a role changed the saved role before confirmation.");
@@ -65,26 +64,16 @@ try {
   assert.equal(state.error, "At least one admin must remain.");
 
   const passwordHash = await hash(password, 12);
-  const database = new DatabaseSync(databasePath);
-  database.exec(`
-    CREATE TABLE users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'TESTER',
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-  const insertUser = database.prepare("INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)");
-  const adminAId = Number(insertUser.run("RoleAdminA", "role-admin-a@issueflow.local", passwordHash, "ADMIN").lastInsertRowid);
-  const adminBId = Number(insertUser.run("RoleAdminB", "role-admin-b@issueflow.local", passwordHash, "ADMIN").lastInsertRowid);
-  const developerId = Number(insertUser.run("RoleDeveloper", "role-developer@issueflow.local", passwordHash, "DEVELOPER").lastInsertRowid);
-  database.close();
+  const adminA = await prisma.user.create({ data: { username: "RoleAdminA", email: "role-admin-a@issueflow.local", password_hash: passwordHash, role: "ADMIN" } });
+  const adminB = await prisma.user.create({ data: { username: "RoleAdminB", email: "role-admin-b@issueflow.local", password_hash: passwordHash, role: "ADMIN" } });
+  const developer = await prisma.user.create({ data: { username: "RoleDeveloper", email: "role-developer@issueflow.local", password_hash: passwordHash, role: "DEVELOPER" } });
+  const adminAId = adminA.id;
+  const adminBId = adminB.id;
+  const developerId = developer.id;
 
   server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-p", "3214"], {
     cwd: process.cwd(),
-    env: { ...process.env, DATABASE_URL: databaseUrl, AUTH_SECRET: authSecret },
+    env: { ...process.env, AUTH_SECRET: authSecret },
     stdio: "ignore"
   });
   await waitForServer();
@@ -111,9 +100,7 @@ try {
   assert.equal(unsafeDemotion.response.status, 400, "The final admin was allowed to demote themselves.");
   assert.equal(unsafeDemotion.data.error, "At least one admin must remain.");
 
-  const verification = new DatabaseSync(databasePath, { readOnly: true });
-  const remainingAdmin = verification.prepare("SELECT role FROM users WHERE id = ?").get(adminAId);
-  verification.close();
+  const remainingAdmin = await prisma.user.findUniqueOrThrow({ where: { id: adminAId } });
   assert.equal(remainingAdmin.role, "ADMIN", "Rejected final-admin demotion changed the database.");
 
   console.log(JSON.stringify({
@@ -129,5 +116,6 @@ try {
     server.kill();
     await once(server, "exit").catch(() => null);
   }
-  await rm(temporaryDirectory, { recursive: true, force: true });
+  await prisma?.$disconnect();
+  await resetTestDatabase("issueflow_smoke_rbac");
 }

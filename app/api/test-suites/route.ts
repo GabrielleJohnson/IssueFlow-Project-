@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     1,
   );
   const where = q
-    ? { OR: [{ name: { contains: q } }, { description: { contains: q } }] }
+    ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { description: { contains: q, mode: "insensitive" as const } }] }
     : {};
   const total = await prisma.testSuite.count({ where });
   const totalPages = Math.max(Math.ceil(total / pageSize), 1);

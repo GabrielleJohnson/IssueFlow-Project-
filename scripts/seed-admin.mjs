@@ -1,10 +1,9 @@
-﻿import { hash } from "bcryptjs";
-import { DatabaseSync } from "node:sqlite";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { PrismaClient } from "@prisma/client";
+import { hash } from "bcryptjs";
+import { loadDatabaseEnvironment } from "./lib/database-url.mjs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const dbPath = join(__dirname, "..", "prisma", "dev.db");
+loadDatabaseEnvironment();
+
 const username = process.env.ISSUEFLOW_ADMIN_USERNAME?.trim();
 const email = process.env.ISSUEFLOW_ADMIN_EMAIL?.trim().toLowerCase();
 const password = process.env.ISSUEFLOW_ADMIN_PASSWORD ?? "";
@@ -19,16 +18,19 @@ if (!email.includes("@") || password.length < 8) {
   process.exit(1);
 }
 
-const db = new DatabaseSync(dbPath);
-const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
-const passwordHash = await hash(password, 12);
+const prisma = new PrismaClient();
 
-if (existingUser) {
-  db.prepare("UPDATE users SET username = ?, password_hash = ?, role = 'ADMIN' WHERE email = ?").run(username, passwordHash, email);
-  console.log(`Updated existing admin user: ${email}`);
-} else {
-  db.prepare("INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'ADMIN')").run(username, email, passwordHash);
-  console.log(`Created admin user: ${email}`);
+try {
+  const passwordHash = await hash(password, 12);
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+
+  await prisma.user.upsert({
+    where: { email },
+    update: { username, password_hash: passwordHash, role: "ADMIN" },
+    create: { username, email, password_hash: passwordHash, role: "ADMIN" }
+  });
+
+  console.log(existingUser ? "Updated existing admin user." : "Created admin user.");
+} finally {
+  await prisma.$disconnect();
 }
-
-db.close();

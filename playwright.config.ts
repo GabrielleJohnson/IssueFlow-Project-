@@ -2,10 +2,12 @@ import { defineConfig, devices } from "@playwright/test";
 import {
   E2E_AUTH_SECRET,
   E2E_BASE_URL,
-  E2E_DATABASE_URL
+  E2E_DATABASE_URL,
+  E2E_DATABASE_URL_POOLED
 } from "./e2e/support/environment";
 
 process.env.DATABASE_URL = E2E_DATABASE_URL;
+process.env.DATABASE_URL_POOLED = E2E_DATABASE_URL_POOLED;
 process.env.AUTH_SECRET = E2E_AUTH_SECRET;
 const localChromiumPath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 
@@ -36,6 +38,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       DATABASE_URL: E2E_DATABASE_URL,
+      DATABASE_URL_POOLED: E2E_DATABASE_URL_POOLED,
       AUTH_SECRET: E2E_AUTH_SECRET
     }
   },
