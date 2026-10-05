@@ -78,7 +78,7 @@ Manual QA was also part of development, especially for responsive layouts, keybo
 
 ## Quick Start
 
-Requirements: Node.js 20.9 or newer and npm.
+Requirements: Node.js 22.13 or newer and npm.
 
 ```powershell
 npm.cmd install
