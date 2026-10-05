@@ -1,6 +1,6 @@
 ﻿import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
-import { extname, join } from "node:path";
+import { extname, join, resolve, sep } from "node:path";
 
 export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 export const UPLOAD_ROOT = "uploads";
@@ -59,8 +59,15 @@ export function issueAttachmentRelativePath(issueId: number, filename: string) {
 }
 
 export function attachmentAbsolutePath(relativePath: string) {
+  const uploadsRoot = resolve(process.cwd(), UPLOAD_ROOT);
   const pathInsideUploads = relativePath.replace(/^uploads[\\/]/, "");
-  return join(process.cwd(), UPLOAD_ROOT, pathInsideUploads);
+  const absolutePath = resolve(uploadsRoot, pathInsideUploads);
+
+  if (absolutePath !== uploadsRoot && !absolutePath.startsWith(`${uploadsRoot}${sep}`)) {
+    throw new Error("Attachment path must stay inside the uploads directory.");
+  }
+
+  return absolutePath;
 }
 
 export function isImageAttachment(mimetype: string) {

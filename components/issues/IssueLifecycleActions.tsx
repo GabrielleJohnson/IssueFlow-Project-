@@ -65,7 +65,7 @@ export function IssueLifecycleActions({ issueId, status, canClose, canReopen }: 
           </button>
         )}
       </div>
-      {error && <p className="mt-3 text-sm font-semibold text-[#ff9aa2]">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-sm font-semibold text-[#ff9aa2]">{error}</p>}
     </section>
   );
 }

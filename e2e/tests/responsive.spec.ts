@@ -82,3 +82,21 @@ test("mobile navigation preserves role-aware access without overflow", async ({ 
   await expect(developerMenu.getByRole("link", { name: "Releases", exact: true })).toHaveCount(0);
   await expect(developerMenu.getByRole("link", { name: "Users", exact: true })).toHaveCount(0);
 });
+
+test("Developer mobile navigation highlights only the most specific Bug Report route", async ({ page, loginAs }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAs("developer");
+
+  await page.goto("/dashboard/issues/assigned");
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  let menu = page.getByTestId("mobile-dashboard-navigation");
+  await expect(menu.getByRole("link", { name: "Assigned Bugs", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(menu.getByRole("link", { name: "Bug Reports", exact: true })).not.toHaveAttribute("aria-current", "page");
+
+  await menu.getByRole("link", { name: "Bug Reports", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard\/issues$/);
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  menu = page.getByTestId("mobile-dashboard-navigation");
+  await expect(menu.getByRole("link", { name: "Bug Reports", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(menu.getByRole("link", { name: "Assigned Bugs", exact: true })).not.toHaveAttribute("aria-current", "page");
+});

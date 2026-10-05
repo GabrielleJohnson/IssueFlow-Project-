@@ -68,7 +68,7 @@ export function ActivityTimeline({ issueId }: { issueId: number }) {
         {isLoading ? (
           <p className="text-sm text-beige">Loading activity...</p>
         ) : error ? (
-          <p className="text-sm font-semibold text-[#ff9aa2]">{error}</p>
+          <p role="alert" className="text-sm font-semibold text-[#ff9aa2]">{error}</p>
         ) : activity.length === 0 ? (
           <p className="rounded-lg border border-bronze bg-espresso/55 p-4 text-sm text-beige">No activity has been recorded yet.</p>
         ) : (

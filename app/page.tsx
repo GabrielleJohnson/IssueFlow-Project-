@@ -14,7 +14,7 @@ const guestNavItems = [
 
 const userNavItems = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Issues", href: "/dashboard/issues" },
+  { label: "Bug Reports", href: "/dashboard/issues" },
   { label: "Test Cases", href: "/dashboard/test-cases" }
 ];
 

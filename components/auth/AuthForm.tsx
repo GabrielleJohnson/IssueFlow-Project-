@@ -84,7 +84,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       </div>
 
       {error && (
-        <p className="mt-4 rounded-lg border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-[#ff9aa2]">
+        <p role="alert" className="mt-4 rounded-lg border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-[#ff9aa2]">
           {error}
         </p>
       )}

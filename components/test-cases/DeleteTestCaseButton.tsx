@@ -42,7 +42,7 @@ export function DeleteTestCaseButton({ testCaseId }: { testCaseId: number }) {
       >
         {isDeleting ? "Deleting..." : "Delete Test Case"}
       </button>
-      {error && <p className="mt-3 text-sm font-semibold text-[#ff9aa2]">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-sm font-semibold text-[#ff9aa2]">{error}</p>}
     </div>
   );
 }

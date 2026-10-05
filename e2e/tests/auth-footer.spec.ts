@@ -21,6 +21,15 @@ test("guest protection and UI login/logout preserve the public boundary", async 
   await expect(page).toHaveURL(/\/login$/);
 });
 
+test("public responses include the baseline browser security headers", async ({ page }) => {
+  const response = await page.goto("/");
+
+  expect(response).not.toBeNull();
+  expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(response?.headers()["x-frame-options"]).toBe("DENY");
+  expect(response?.headers()["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+});
+
 test("footer placement matches public, authenticated, and auth-page expectations", async ({ page, loginAs }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 

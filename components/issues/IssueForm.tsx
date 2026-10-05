@@ -150,7 +150,7 @@ export function IssueForm({ mode, issue, users, testCases, prefill, statusOnly =
         <div className="rounded-lg border border-amber/40 bg-amber/10 px-4 py-3 text-sm leading-6 text-beige">
           Developers can update workflow status while QA-owned reproduction details, severity, evidence, and test links remain protected.
         </div>
-        {error && <p className="rounded-lg border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-[#ff9aa2]">{error}</p>}
+        {error && <p role="alert" className="rounded-lg border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-[#ff9aa2]">{error}</p>}
         <div className="flex flex-col gap-3 sm:flex-row">
           <button type="submit" disabled={isSubmitting} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso transition hover:bg-amber disabled:cursor-not-allowed disabled:opacity-65">
             {isSubmitting ? "Saving..." : "Update Status"}
@@ -235,7 +235,7 @@ export function IssueForm({ mode, issue, users, testCases, prefill, statusOnly =
       </div>
 
       {error && (
-        <p className="rounded-lg border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-[#ff9aa2] sm:col-span-2">
+        <p role="alert" className="rounded-lg border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-[#ff9aa2] sm:col-span-2">
           {error}
         </p>
       )}

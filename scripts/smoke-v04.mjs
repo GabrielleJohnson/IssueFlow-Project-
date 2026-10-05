@@ -1,15 +1,48 @@
-process.env.DATABASE_URL = `file:${process.cwd().replace(/\\/g, "/")}/prisma/dev.db`;
+const { execFileSync, spawn } = await import("node:child_process");
+const { writeFile, mkdir, readFile, rm } = await import("node:fs/promises");
+const { join } = await import("node:path");
+
+const smokeDatabasePath = join(process.cwd(), "prisma", "smoke-v04.db");
+const smokeDatabaseUrl = "file:./smoke-v04.db";
+
+process.env.DATABASE_URL = smokeDatabaseUrl;
 process.env.AUTH_SECRET = "issueflow-local-development-secret";
 
-const { spawn } = await import("node:child_process");
-const { writeFile, mkdir } = await import("node:fs/promises");
-const { join } = await import("node:path");
+async function removeSmokeDatabase() {
+  for (const path of [smokeDatabasePath, `${smokeDatabasePath}-journal`, `${smokeDatabasePath}-shm`, `${smokeDatabasePath}-wal`]) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      try {
+        await rm(path, { force: true });
+        break;
+      } catch (error) {
+        if (!["EBUSY", "EPERM"].includes(error.code) || attempt === 19) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+    }
+  }
+}
+
+await removeSmokeDatabase();
+
+execFileSync(process.execPath, ["scripts/init-db.mjs"], {
+  cwd: process.cwd(),
+  env: {
+    ...process.env,
+    ISSUEFLOW_DB_PATH: smokeDatabasePath
+  },
+  stdio: "inherit"
+});
+
 const { PrismaClient } = await import("@prisma/client");
 const bcrypt = await import("bcryptjs");
 
 const prisma = new PrismaClient();
 const baseUrl = "http://127.0.0.1:3210";
 const stamp = Date.now();
+let server;
+let pngPath;
+
+try {
 const users = {
   admin: { username: `SmokeAdmin${stamp}`, email: `smoke-admin-${stamp}@issueflow.local`, password: "SmokePass123!", role: "ADMIN" },
   tester: { username: `SmokeTester${stamp}`, email: `smoke-tester-${stamp}@issueflow.local`, password: "SmokePass123!", role: "TESTER" },
@@ -25,7 +58,10 @@ for (const user of Object.values(users)) {
   });
 }
 
-const server = spawn("npm.cmd", ["run", "dev", "--", "-p", "3210"], { cwd: process.cwd(), shell: true, stdio: "pipe" });
+server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "-p", "3210"], {
+  cwd: process.cwd(),
+  stdio: "pipe"
+});
 let serverOutput = "";
 server.stdout.on("data", (chunk) => { serverOutput += chunk.toString(); });
 server.stderr.on("data", (chunk) => { serverOutput += chunk.toString(); });
@@ -158,10 +194,10 @@ let developerAssign = await request("PATCH", `/api/issues/${issueId}`, devBCooki
 assert(developerAssign.response.status === 403, "Developer assignment change was not forbidden.");
 
 await mkdir(join(process.cwd(), "uploads", "issues", String(issueId)), { recursive: true });
-const pngPath = join(process.cwd(), "uploads", "issues", String(issueId), `smoke-${stamp}.png`);
+pngPath = join(process.cwd(), "uploads", "issues", String(issueId), `smoke-${stamp}.png`);
 await writeFile(pngPath, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lA1xNAAAAABJRU5ErkJggg==", "base64"));
 const form = new FormData();
-form.append("files", new Blob([await (await import("node:fs/promises")).readFile(pngPath)], { type: "image/png" }), `smoke-${stamp}.png`);
+form.append("files", new Blob([await readFile(pngPath)], { type: "image/png" }), `smoke-${stamp}.png`);
 const uploadResponse = await fetch(`${baseUrl}/api/issues/${issueId}/attachments`, { method: "POST", headers: { Cookie: testerCookie }, body: form });
 const uploadData = await uploadResponse.json().catch(() => ({}));
 assert(uploadResponse.status === 201, `Evidence upload failed: ${uploadResponse.status} ${JSON.stringify(uploadData)}`);
@@ -187,7 +223,24 @@ console.log(JSON.stringify({
   activityCount: activity.data.activity.length,
   commentsCount: comments.data.comments.length
 }, null, 2));
+} finally {
+  if (server && server.exitCode === null) {
+    const exited = new Promise((resolve) => server.once("exit", resolve));
+    if (process.platform === "win32") {
+      try {
+        execFileSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore" });
+      } catch {
+        server.kill();
+      }
+    } else {
+      server.kill();
+    }
+    await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5000))]);
+  }
 
-await prisma.$disconnect();
-server.kill();
+  await prisma.$disconnect();
+  if (pngPath) await rm(pngPath, { force: true });
+
+  await removeSmokeDatabase();
+}
 

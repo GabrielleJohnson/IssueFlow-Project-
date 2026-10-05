@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useRouter } from "next/navigation";
-import { ChangeEvent, useEffect, useReducer, useState } from "react";
+import { ChangeEvent, useEffect, useReducer, useRef, useState } from "react";
 import { formatEnumLabel, userRoles } from "@/lib/issueOptions";
 import { createRoleChangeState, roleChangeReducer } from "@/lib/roleChangeState";
 
@@ -16,10 +16,39 @@ export function UserRoleSelect({ userId, username, currentRole, isCurrentUser }:
   const router = useRouter();
   const [state, dispatch] = useReducer(roleChangeReducer, currentRole, createRoleChangeState);
   const [isSaving, setIsSaving] = useState(false);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const isSavingRef = useRef(false);
+
+  useEffect(() => {
+    isSavingRef.current = isSaving;
+  }, [isSaving]);
 
   useEffect(() => {
     dispatch({ type: "sync", role: currentRole });
   }, [currentRole]);
+
+  useEffect(() => {
+    if (!state.pendingRole) return;
+
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    cancelButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !isSavingRef.current) {
+        event.preventDefault();
+        dispatch({ type: "cancel" });
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocus?.focus();
+    };
+  }, [state.pendingRole]);
 
   async function handleChange(event: ChangeEvent<HTMLSelectElement>) {
     const nextRole = event.target.value;
@@ -65,12 +94,18 @@ export function UserRoleSelect({ userId, username, currentRole, isCurrentUser }:
 
   return (
     <div className="min-w-44">
-      <select className="field py-2 text-sm" value={state.selectedRole} onChange={handleChange} disabled={isSaving}>
+      <select
+        aria-label={`Change role for ${username}`}
+        className="field py-2 text-sm"
+        value={state.selectedRole}
+        onChange={handleChange}
+        disabled={isSaving}
+      >
         {userRoles.map((option) => (
           <option key={option} value={option}>{formatEnumLabel(option)}</option>
         ))}
       </select>
-      {state.error && <p className="mt-2 text-xs font-semibold text-[#ff9aa2]">{state.error}</p>}
+      {state.error && <p role="alert" className="mt-2 text-xs font-semibold text-[#ff9aa2]">{state.error}</p>}
 
       {state.pendingRole && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-espresso/80 px-4 py-8 backdrop-blur-sm" role="presentation">
@@ -98,6 +133,7 @@ export function UserRoleSelect({ userId, username, currentRole, isCurrentUser }:
             </p>
             <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
+                ref={cancelButtonRef}
                 type="button"
                 className="rounded-full border border-bronze px-5 py-3 text-sm font-bold text-ivory transition hover:border-amber hover:text-amber"
                 onClick={cancelChange}

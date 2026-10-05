@@ -111,7 +111,7 @@ export function TestCaseForm({ mode, testCase, issues }: TestCaseFormProps) {
       </label>
 
       {error && (
-        <p className="rounded-lg border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-[#ff9aa2] sm:col-span-2">
+        <p role="alert" className="rounded-lg border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-[#ff9aa2] sm:col-span-2">
           {error}
         </p>
       )}

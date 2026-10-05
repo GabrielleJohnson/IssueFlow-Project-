@@ -4,6 +4,93 @@ import { canEditRelease } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ id: string }> };
-async function context(request: NextRequest, params: Params["params"]) { const user = await getCurrentUser(); if (!user) return { error: NextResponse.json({ error: "You must be logged in to manage release scope." }, { status: 401 }) }; const id = Number((await params).id); const release = Number.isInteger(id) ? await prisma.release.findUnique({ where: { id } }) : null; if (!release) return { error: NextResponse.json({ error: "Release not found." }, { status: 404 }) }; if (!canEditRelease(user, release)) return { error: NextResponse.json({ error: "You do not have permission to manage release scope." }, { status: 403 }) }; const body = await request.json().catch(() => null); const requirementId = Number(body?.requirement_id); if (!Number.isInteger(requirementId)) return { error: NextResponse.json({ error: "A valid requirement is required." }, { status: 400 }) }; return { release, requirementId }; }
-export async function POST(request: NextRequest, { params }: Params) { const result = await context(request, params); if ("error" in result) return result.error; if (!await prisma.requirement.findUnique({ where: { id: result.requirementId } })) return NextResponse.json({ error: "Requirement not found." }, { status: 404 }); const duplicate = await prisma.releaseRequirement.findUnique({ where: { release_id_requirement_id: { release_id: result.release.id, requirement_id: result.requirementId } } }); if (duplicate) return NextResponse.json({ error: "That requirement is already in scope." }, { status: 409 }); await prisma.releaseRequirement.create({ data: { release_id: result.release.id, requirement_id: result.requirementId } }); return NextResponse.json({ ok: true }, { status: 201 }); }
-export async function DELETE(request: NextRequest, { params }: Params) { const result = await context(request, params); if ("error" in result) return result.error; const link = await prisma.releaseRequirement.findUnique({ where: { release_id_requirement_id: { release_id: result.release.id, requirement_id: result.requirementId } } }); if (!link) return NextResponse.json({ error: "That requirement is not in scope." }, { status: 404 }); await prisma.releaseRequirement.delete({ where: { id: link.id } }); return NextResponse.json({ ok: true }); }
+async function context(request: NextRequest, params: Params["params"]) {
+  const user = await getCurrentUser();
+  if (!user)
+    return {
+      error: NextResponse.json(
+        { error: "You must be logged in to manage release scope." },
+        { status: 401 },
+      ),
+    };
+  const id = Number((await params).id);
+  const release = Number.isInteger(id)
+    ? await prisma.release.findUnique({ where: { id } })
+    : null;
+  if (!release)
+    return {
+      error: NextResponse.json(
+        { error: "Release not found." },
+        { status: 404 },
+      ),
+    };
+  if (!canEditRelease(user, release))
+    return {
+      error: NextResponse.json(
+        { error: "You do not have permission to manage release scope." },
+        { status: 403 },
+      ),
+    };
+  const body = await request.json().catch(() => null);
+  const requirementId = Number(body?.requirement_id);
+  if (!Number.isInteger(requirementId))
+    return {
+      error: NextResponse.json(
+        { error: "A valid requirement is required." },
+        { status: 400 },
+      ),
+    };
+  return { release, requirementId };
+}
+export async function POST(request: NextRequest, { params }: Params) {
+  const result = await context(request, params);
+  if ("error" in result) return result.error;
+  if (
+    !(await prisma.requirement.findUnique({
+      where: { id: result.requirementId },
+    }))
+  )
+    return NextResponse.json(
+      { error: "Requirement not found." },
+      { status: 404 },
+    );
+  const duplicate = await prisma.releaseRequirement.findUnique({
+    where: {
+      release_id_requirement_id: {
+        release_id: result.release.id,
+        requirement_id: result.requirementId,
+      },
+    },
+  });
+  if (duplicate)
+    return NextResponse.json(
+      { error: "That requirement is already in scope." },
+      { status: 409 },
+    );
+  await prisma.releaseRequirement.create({
+    data: {
+      release_id: result.release.id,
+      requirement_id: result.requirementId,
+    },
+  });
+  return NextResponse.json({ ok: true }, { status: 201 });
+}
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const result = await context(request, params);
+  if ("error" in result) return result.error;
+  const link = await prisma.releaseRequirement.findUnique({
+    where: {
+      release_id_requirement_id: {
+        release_id: result.release.id,
+        requirement_id: result.requirementId,
+      },
+    },
+  });
+  if (!link)
+    return NextResponse.json(
+      { error: "That requirement is not in scope." },
+      { status: 404 },
+    );
+  await prisma.releaseRequirement.delete({ where: { id: link.id } });
+  return NextResponse.json({ ok: true });
+}

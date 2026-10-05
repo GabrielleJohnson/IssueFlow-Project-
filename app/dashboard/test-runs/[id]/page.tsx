@@ -6,7 +6,185 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { DeleteTestManagementButton } from "@/components/test-management/DeleteTestManagementButton";
 import { RunExecutionWorkspace } from "@/components/test-management/RunExecutionWorkspace";
 import { getCurrentUser } from "@/lib/auth";
-import { canDeleteTestRun, canExecuteTestRun, canViewTestManagement } from "@/lib/permissions";
+import {
+  canDeleteTestRun,
+  canExecuteTestRun,
+  canViewTestManagement,
+} from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { runProgress, testRunReference } from "@/lib/testManagement";
-type Props={params:Promise<{id:string}>};export default async function RunDetailPage({params}:Props){const user=await getCurrentUser();if(!user)redirect("/login");if(!canViewTestManagement(user))redirect("/dashboard");const id=Number((await params).id);if(!Number.isInteger(id))notFound();const run=await prisma.testRun.findUnique({where:{id},include:{suite:{select:{id:true,name:true}},release:{select:{id:true,name:true}},creator:{select:{username:true}},executions:{orderBy:{id:"asc"},include:{executor:{select:{username:true}},bugReport:{select:{id:true,title:true,status:true}}}}}});if(!run)notFound();const progress=runProgress(run.executions);return <main className="min-h-screen bg-espresso text-ivory"><DashboardNav user={user}/><section className="mx-auto max-w-6xl px-5 pb-20 pt-32 sm:px-8"><div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><SectionHeader eyebrow={`${testRunReference(run.id)} · ${run.release_label}`} title={run.suite_name} description={`${run.environment}${run.notes?` · ${run.notes}`:""}`}/><div className="flex flex-wrap gap-3">{run.suite_id&&<Link href={`/dashboard/test-runs/new?suite=${run.suite_id}`} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso">Run Again</Link>}<Link href="/dashboard/test-runs" className="rounded-full border border-bronze px-5 py-3 text-sm font-bold">Back to Runs</Link></div></div><div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"><article className="rounded-lg border border-bronze bg-clay p-4"><p className="text-sm text-beige">Status</p><div className="mt-2"><Badge label={run.status}/></div></article><article className="rounded-lg border border-bronze bg-clay p-4"><p className="text-sm text-beige">Progress</p><p className="mt-2 text-2xl font-bold">{progress.executed}/{progress.total}</p></article><article className="rounded-lg border border-bronze bg-clay p-4"><p className="text-sm text-beige">Passed</p><p className="mt-2 text-2xl font-bold text-sage">{progress.passed}</p></article><article className="rounded-lg border border-bronze bg-clay p-4"><p className="text-sm text-beige">Failed</p><p className="mt-2 text-2xl font-bold text-[#ff9aa2]">{progress.failed}</p></article><article className="rounded-lg border border-bronze bg-clay p-4"><p className="text-sm text-beige">Blocked</p><p className="mt-2 text-2xl font-bold text-amber">{progress.blocked}</p></article></div><div className="mt-5 h-2 overflow-hidden rounded-full bg-bronze/60"><div className="h-full bg-coral transition-all" style={{width:`${progress.percent}%`}}/></div><p className="mt-2 text-sm text-beige">{progress.percent}% executed · started by {run.creator.username} on {new Date(run.started_at).toLocaleString()}</p>{run.release?<p className="mt-3 text-sm text-beige">QA Release: <Link href={`/dashboard/releases/${run.release.id}`} className="font-semibold text-coral">{run.release.name}</Link></p>:<p className="mt-3 text-sm text-beige">Not associated with a QA Release.</p>}{run.suite?<p className="mt-3 text-sm text-beige">Source suite: <Link href={`/dashboard/test-suites/${run.suite.id}`} className="font-semibold text-amber">{run.suite.name}</Link></p>:<p className="mt-3 text-sm text-beige">The source suite was deleted; this run snapshot remains intact.</p>}<div className="mt-8"><RunExecutionWorkspace executions={run.executions} canExecute={canExecuteTestRun(user)}/></div>{canDeleteTestRun(user,run)&&<div className="mt-8 rounded-lg border border-ember/30 bg-clay p-5"><p className="mb-4 text-sm text-beige">Admin-only: deleting a run deletes its execution snapshots and disconnects originating bugs.</p><DeleteTestManagementButton endpoint={`/api/test-runs/${run.id}`} returnTo="/dashboard/test-runs" label="Test Run"/></div>}</section></main>}
+
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+type RunMetricProps = {
+  label: string;
+  value?: number;
+  children?: React.ReactNode;
+  accent?: string;
+};
+
+function RunMetric({ label, value, children, accent = "" }: RunMetricProps) {
+  return (
+    <article className="rounded-lg border border-bronze bg-clay p-4">
+      <p className="text-sm text-beige">{label}</p>
+      {children ?? (
+        <p className={`mt-2 text-2xl font-bold ${accent}`}>{value}</p>
+      )}
+    </article>
+  );
+}
+
+export default async function RunDetailPage({ params }: Props) {
+  const user = await getCurrentUser();
+
+  if (!user) redirect("/login");
+  if (!canViewTestManagement(user)) redirect("/dashboard");
+
+  const id = Number((await params).id);
+  if (!Number.isInteger(id)) notFound();
+
+  const run = await prisma.testRun.findUnique({
+    where: { id },
+    include: {
+      suite: { select: { id: true, name: true } },
+      release: { select: { id: true, name: true } },
+      creator: { select: { username: true } },
+      executions: {
+        orderBy: { id: "asc" },
+        include: {
+          executor: { select: { username: true } },
+          bugReport: { select: { id: true, title: true, status: true } },
+        },
+      },
+    },
+  });
+
+  if (!run) notFound();
+
+  const progress = runProgress(run.executions);
+
+  return (
+    <main className="min-h-screen bg-espresso text-ivory">
+      <DashboardNav user={user} />
+      <section className="mx-auto max-w-6xl px-5 pb-20 pt-32 sm:px-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <SectionHeader
+            eyebrow={`${testRunReference(run.id)} · ${run.release_label}`}
+            title={run.suite_name}
+            description={`${run.environment}${run.notes ? ` · ${run.notes}` : ""}`}
+          />
+          <div className="flex flex-wrap gap-3">
+            {run.suite_id && (
+              <Link
+                href={`/dashboard/test-runs/new?suite=${run.suite_id}`}
+                className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso"
+              >
+                Run Again
+              </Link>
+            )}
+            <Link
+              href="/dashboard/test-runs"
+              className="rounded-full border border-bronze px-5 py-3 text-sm font-bold"
+            >
+              Back to Runs
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <RunMetric label="Status">
+            <div className="mt-2">
+              <Badge label={run.status} />
+            </div>
+          </RunMetric>
+          <RunMetric label="Progress">
+            <p className="mt-2 text-2xl font-bold">
+              {progress.executed}/{progress.total}
+            </p>
+          </RunMetric>
+          <RunMetric
+            label="Passed"
+            value={progress.passed}
+            accent="text-sage"
+          />
+          <RunMetric
+            label="Failed"
+            value={progress.failed}
+            accent="text-[#ff9aa2]"
+          />
+          <RunMetric
+            label="Blocked"
+            value={progress.blocked}
+            accent="text-amber"
+          />
+        </div>
+
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-bronze/60">
+          <div
+            className="h-full bg-coral transition-all"
+            style={{ width: `${progress.percent}%` }}
+          />
+        </div>
+        <p className="mt-2 text-sm text-beige">
+          {progress.percent}% executed · started by {run.creator.username} on{" "}
+          {new Date(run.started_at).toLocaleString()}
+        </p>
+
+        {run.release ? (
+          <p className="mt-3 text-sm text-beige">
+            QA Release:{" "}
+            <Link
+              href={`/dashboard/releases/${run.release.id}`}
+              className="font-semibold text-coral"
+            >
+              {run.release.name}
+            </Link>
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-beige">
+            Not associated with a QA Release.
+          </p>
+        )}
+
+        {run.suite ? (
+          <p className="mt-3 text-sm text-beige">
+            Source suite:{" "}
+            <Link
+              href={`/dashboard/test-suites/${run.suite.id}`}
+              className="font-semibold text-amber"
+            >
+              {run.suite.name}
+            </Link>
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-beige">
+            The source suite was deleted; this run snapshot remains intact.
+          </p>
+        )}
+
+        <div className="mt-8">
+          <RunExecutionWorkspace
+            executions={run.executions}
+            canExecute={canExecuteTestRun(user)}
+          />
+        </div>
+
+        {canDeleteTestRun(user, run) && (
+          <div className="mt-8 rounded-lg border border-ember/30 bg-clay p-5">
+            <p className="mb-4 text-sm text-beige">
+              Admin-only: deleting a run deletes its execution snapshots and
+              disconnects originating bugs.
+            </p>
+            <DeleteTestManagementButton
+              endpoint={`/api/test-runs/${run.id}`}
+              returnTo="/dashboard/test-runs"
+              label="Test Run"
+            />
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}

@@ -6,8 +6,155 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { DeleteTestManagementButton } from "@/components/test-management/DeleteTestManagementButton";
 import { SuiteMembershipManager } from "@/components/test-management/SuiteMembershipManager";
 import { getCurrentUser } from "@/lib/auth";
-import { canDeleteTestSuite, canEditTestSuite, canViewTestManagement } from "@/lib/permissions";
+import {
+  canDeleteTestSuite,
+  canEditTestSuite,
+  canViewTestManagement,
+} from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { testRunReference, testSuiteReference } from "@/lib/testManagement";
-type Props={params:Promise<{id:string}>};
-export default async function SuiteDetailPage({params}:Props){const user=await getCurrentUser();if(!user)redirect("/login");if(!canViewTestManagement(user))redirect("/dashboard");const id=Number((await params).id);if(!Number.isInteger(id))notFound();const [suite,allCases]=await Promise.all([prisma.testSuite.findUnique({where:{id},include:{creator:{select:{username:true}},memberships:{orderBy:{added_at:"asc"},include:{testCase:true}},runs:{orderBy:{started_at:"desc"},take:12,include:{executions:{select:{status:true}}}}}}),prisma.testCase.findMany({orderBy:{updated_at:"desc"}})]);if(!suite)notFound();const canManage=canEditTestSuite(user,suite);const members=suite.memberships.map(item=>item.testCase);return <main className="min-h-screen bg-espresso text-ivory"><DashboardNav user={user}/><section className="mx-auto max-w-6xl px-5 pb-20 pt-32 sm:px-8"><div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><SectionHeader eyebrow={testSuiteReference(suite.id)} title={suite.name} description={suite.description||"Reusable QA coverage suite."}/><div className="flex flex-wrap gap-3">{members.length>0&&<Link href={`/dashboard/test-runs/new?suite=${suite.id}`} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso">Start New Run</Link>}{canManage&&<Link href={`/dashboard/test-suites/${suite.id}/edit`} className="rounded-full border border-bronze px-5 py-3 text-sm font-bold">Edit Suite</Link>}<Link href="/dashboard/test-suites" className="rounded-full border border-bronze px-5 py-3 text-sm font-bold">Back</Link></div></div><div className="mt-8 grid gap-4 sm:grid-cols-3"><article className="rounded-lg border border-bronze bg-clay p-4"><p className="text-sm text-beige">Test Cases</p><p className="mt-2 text-2xl font-bold">{members.length}</p></article><article className="rounded-lg border border-bronze bg-clay p-4"><p className="text-sm text-beige">Previous Runs</p><p className="mt-2 text-2xl font-bold">{suite.runs.length}</p></article><article className="rounded-lg border border-bronze bg-clay p-4"><p className="text-sm text-beige">Created by</p><p className="mt-2 font-semibold">{suite.creator.username}</p></article></div><div className="mt-8"><SuiteMembershipManager suiteId={suite.id} available={allCases} members={members} canManage={canManage}/></div><section className="mt-8 rounded-lg border border-bronze bg-clay shadow-card"><div className="border-b border-bronze p-5"><h2 className="font-display text-xl font-semibold">Run History</h2></div>{suite.runs.length===0?<p className="p-5 text-sm text-beige">No runs have been started from this suite.</p>:<div className="divide-y divide-bronze/70">{suite.runs.map(run=><Link key={run.id} href={`/dashboard/test-runs/${run.id}`} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold text-amber">{testRunReference(run.id)}</p><p className="font-semibold">{run.release_label}</p><p className="text-sm text-beige">{run.environment}</p></div><Badge label={run.status}/></Link>)}</div>}</section>{canDeleteTestSuite(user,suite)&&<div className="mt-8 rounded-lg border border-ember/30 bg-clay p-5"><p className="mb-4 text-sm text-beige">Deleting this suite removes membership only. Test Cases and historical runs remain.</p><DeleteTestManagementButton endpoint={`/api/test-suites/${suite.id}`} returnTo="/dashboard/test-suites" label="Test Suite"/></div>}</section></main>}
+
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function SuiteDetailPage({ params }: Props) {
+  const user = await getCurrentUser();
+
+  if (!user) redirect("/login");
+  if (!canViewTestManagement(user)) redirect("/dashboard");
+
+  const id = Number((await params).id);
+  if (!Number.isInteger(id)) notFound();
+
+  const [suite, allCases] = await Promise.all([
+    prisma.testSuite.findUnique({
+      where: { id },
+      include: {
+        creator: { select: { username: true } },
+        memberships: {
+          orderBy: { added_at: "asc" },
+          include: { testCase: true },
+        },
+        runs: {
+          orderBy: { started_at: "desc" },
+          take: 12,
+          include: { executions: { select: { status: true } } },
+        },
+      },
+    }),
+    prisma.testCase.findMany({ orderBy: { updated_at: "desc" } }),
+  ]);
+
+  if (!suite) notFound();
+
+  const canManage = canEditTestSuite(user, suite);
+  const members = suite.memberships.map((item) => item.testCase);
+
+  return (
+    <main className="min-h-screen bg-espresso text-ivory">
+      <DashboardNav user={user} />
+      <section className="mx-auto max-w-6xl px-5 pb-20 pt-32 sm:px-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <SectionHeader
+            eyebrow={testSuiteReference(suite.id)}
+            title={suite.name}
+            description={suite.description || "Reusable QA coverage suite."}
+          />
+          <div className="flex flex-wrap gap-3">
+            {members.length > 0 && (
+              <Link
+                href={`/dashboard/test-runs/new?suite=${suite.id}`}
+                className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso"
+              >
+                Start New Run
+              </Link>
+            )}
+            {canManage && (
+              <Link
+                href={`/dashboard/test-suites/${suite.id}/edit`}
+                className="rounded-full border border-bronze px-5 py-3 text-sm font-bold"
+              >
+                Edit Suite
+              </Link>
+            )}
+            <Link
+              href="/dashboard/test-suites"
+              className="rounded-full border border-bronze px-5 py-3 text-sm font-bold"
+            >
+              Back
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          <article className="rounded-lg border border-bronze bg-clay p-4">
+            <p className="text-sm text-beige">Test Cases</p>
+            <p className="mt-2 text-2xl font-bold">{members.length}</p>
+          </article>
+          <article className="rounded-lg border border-bronze bg-clay p-4">
+            <p className="text-sm text-beige">Previous Runs</p>
+            <p className="mt-2 text-2xl font-bold">{suite.runs.length}</p>
+          </article>
+          <article className="rounded-lg border border-bronze bg-clay p-4">
+            <p className="text-sm text-beige">Created by</p>
+            <p className="mt-2 font-semibold">{suite.creator.username}</p>
+          </article>
+        </div>
+
+        <div className="mt-8">
+          <SuiteMembershipManager
+            suiteId={suite.id}
+            available={allCases}
+            members={members}
+            canManage={canManage}
+          />
+        </div>
+
+        <section className="mt-8 rounded-lg border border-bronze bg-clay shadow-card">
+          <div className="border-b border-bronze p-5">
+            <h2 className="font-display text-xl font-semibold">Run History</h2>
+          </div>
+          {suite.runs.length === 0 ? (
+            <p className="p-5 text-sm text-beige">
+              No runs have been started from this suite.
+            </p>
+          ) : (
+            <div className="divide-y divide-bronze/70">
+              {suite.runs.map((run) => (
+                <Link
+                  key={run.id}
+                  href={`/dashboard/test-runs/${run.id}`}
+                  className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="text-xs font-bold text-amber">
+                      {testRunReference(run.id)}
+                    </p>
+                    <p className="font-semibold">{run.release_label}</p>
+                    <p className="text-sm text-beige">{run.environment}</p>
+                  </div>
+                  <Badge label={run.status} />
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {canDeleteTestSuite(user, suite) && (
+          <div className="mt-8 rounded-lg border border-ember/30 bg-clay p-5">
+            <p className="mb-4 text-sm text-beige">
+              Deleting this suite removes membership only. Test Cases and
+              historical runs remain.
+            </p>
+            <DeleteTestManagementButton
+              endpoint={`/api/test-suites/${suite.id}`}
+              returnTo="/dashboard/test-suites"
+              label="Test Suite"
+            />
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}

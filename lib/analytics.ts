@@ -1,9 +1,23 @@
 import type { Prisma } from "@prisma/client";
-import { issueSeverities, issueStatuses, testCaseStatuses } from "@/lib/issueOptions";
-import { isAdmin, isDeveloper, issueWhereForUser, type PermissionUser } from "@/lib/permissions";
+import {
+  issueSeverities,
+  issueStatuses,
+  testCaseStatuses,
+} from "@/lib/issueOptions";
+import {
+  isAdmin,
+  isDeveloper,
+  issueWhereForUser,
+  type PermissionUser,
+} from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
-export const activeIssueStatuses = ["OPEN", "IN_PROGRESS", "IN_REVIEW", "REOPENED"] as const;
+export const activeIssueStatuses = [
+  "OPEN",
+  "IN_PROGRESS",
+  "IN_REVIEW",
+  "REOPENED",
+] as const;
 
 type AnalyticsUser = PermissionUser & {
   username: string;
@@ -60,8 +74,17 @@ export type AnalyticsData = {
     executed: number;
     passRate: number;
     resultDistribution: Array<{ key: string; label: string; count: number }>;
-    frequentFailures: Array<{ reference: string; title: string; failures: number }>;
-    releaseResults: Array<{ release: string; passed: number; failed: number; blocked: number }>;
+    frequentFailures: Array<{
+      reference: string;
+      title: string;
+      failures: number;
+    }>;
+    releaseResults: Array<{
+      release: string;
+      passed: number;
+      failed: number;
+      blocked: number;
+    }>;
   };
 };
 
@@ -73,13 +96,19 @@ function labelFor(value: string) {
     .join(" ");
 }
 
-export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsData> {
+export async function getAnalyticsData(
+  user: AnalyticsUser,
+): Promise<AnalyticsData> {
   const issueWhere: Prisma.IssueWhereInput = issueWhereForUser(user);
   const testCaseWhere: Prisma.TestCaseWhereInput = isDeveloper(user)
     ? { linkedIssue: { is: issueWhere } }
     : {};
-  const activityWhere: Prisma.IssueActivityWhereInput = { issue: { is: issueWhere } };
-  const executionWhere: Prisma.TestExecutionWhereInput = isDeveloper(user) ? { bugReport: { is: issueWhere } } : {};
+  const activityWhere: Prisma.IssueActivityWhereInput = {
+    issue: { is: issueWhere },
+  };
+  const executionWhere: Prisma.TestExecutionWhereInput = isDeveloper(user)
+    ? { bugReport: { is: issueWhere } }
+    : {};
   const meaningfulActions = [
     "ISSUE_CREATED",
     "STATUS_CHANGED",
@@ -88,29 +117,62 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
     "ISSUE_CLOSED",
     "ASSIGNEE_CHANGED",
     "EVIDENCE_UPLOADED",
-    "COMMENT_ADDED"
+    "COMMENT_ADDED",
   ];
 
-  const developerWorkloadPromise = isAdmin(user) || isDeveloper(user)
-    ? prisma.user.findMany({
-        where: isDeveloper(user) ? { id: user.id, role: "DEVELOPER" } : { role: "DEVELOPER" },
-        orderBy: { username: "asc" },
-        select: {
-          id: true,
-          username: true,
-          assignedIssues: {
-            where: { status: { in: [...activeIssueStatuses] } },
-            select: { status: true }
-          }
-        }
-      })
-    : Promise.resolve([]);
+  const developerWorkloadPromise =
+    isAdmin(user) || isDeveloper(user)
+      ? prisma.user.findMany({
+          where: isDeveloper(user)
+            ? { id: user.id, role: "DEVELOPER" }
+            : { role: "DEVELOPER" },
+          orderBy: { username: "asc" },
+          select: {
+            id: true,
+            username: true,
+            assignedIssues: {
+              where: { status: { in: [...activeIssueStatuses] } },
+              select: { status: true },
+            },
+          },
+        })
+      : Promise.resolve([]);
 
-  const [statusGroups, severityGroups, testGroups, unassignedBugs, recentActivity, reopenActivities, resolvedActivities, developers, problemTestCases, executionGroups, executionRows] = await Promise.all([
-    prisma.issue.groupBy({ by: ["status"], where: issueWhere, _count: { _all: true } }),
-    prisma.issue.groupBy({ by: ["severity"], where: issueWhere, _count: { _all: true } }),
-    prisma.testCase.groupBy({ by: ["status"], where: testCaseWhere, _count: { _all: true } }),
-    prisma.issue.count({ where: { ...issueWhere, assigned_to: null, status: { in: [...activeIssueStatuses] } } }),
+  const [
+    statusGroups,
+    severityGroups,
+    testGroups,
+    unassignedBugs,
+    recentActivity,
+    reopenActivities,
+    resolvedActivities,
+    developers,
+    problemTestCases,
+    executionGroups,
+    executionRows,
+  ] = await Promise.all([
+    prisma.issue.groupBy({
+      by: ["status"],
+      where: issueWhere,
+      _count: { _all: true },
+    }),
+    prisma.issue.groupBy({
+      by: ["severity"],
+      where: issueWhere,
+      _count: { _all: true },
+    }),
+    prisma.testCase.groupBy({
+      by: ["status"],
+      where: testCaseWhere,
+      _count: { _all: true },
+    }),
+    prisma.issue.count({
+      where: {
+        ...issueWhere,
+        assigned_to: null,
+        status: { in: [...activeIssueStatuses] },
+      },
+    }),
     prisma.issueActivity.findMany({
       where: { ...activityWhere, action_type: { in: meaningfulActions } },
       orderBy: { created_at: "desc" },
@@ -121,11 +183,17 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
         message: true,
         created_at: true,
         actor: { select: { username: true, role: true } },
-        issue: { select: { id: true, title: true, status: true } }
-      }
+        issue: { select: { id: true, title: true, status: true } },
+      },
     }),
-    prisma.issueActivity.findMany({ where: { ...activityWhere, action_type: "ISSUE_REOPENED" }, select: { issue_id: true } }),
-    prisma.issueActivity.findMany({ where: { ...activityWhere, action_type: "ISSUE_RESOLVED" }, select: { issue_id: true } }),
+    prisma.issueActivity.findMany({
+      where: { ...activityWhere, action_type: "ISSUE_REOPENED" },
+      select: { issue_id: true },
+    }),
+    prisma.issueActivity.findMany({
+      where: { ...activityWhere, action_type: "ISSUE_RESOLVED" },
+      select: { issue_id: true },
+    }),
     developerWorkloadPromise,
     prisma.testCase.findMany({
       where: testCaseWhere,
@@ -133,40 +201,98 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
         feature_module: true,
         status: true,
         linked_issue_id: true,
-        createdBugReports: { where: issueWhere, select: { id: true } }
-      }
+        createdBugReports: { where: issueWhere, select: { id: true } },
+      },
     }),
-    prisma.testExecution.groupBy({ by: ["status"], where: executionWhere, _count: { _all: true } }),
-    prisma.testExecution.findMany({ where: executionWhere, orderBy: { executed_at: "desc" }, select: { test_case_reference: true, title_snapshot: true, status: true, run: { select: { release_label: true } } } })
+    prisma.testExecution.groupBy({
+      by: ["status"],
+      where: executionWhere,
+      _count: { _all: true },
+    }),
+    prisma.testExecution.findMany({
+      where: executionWhere,
+      orderBy: { executed_at: "desc" },
+      select: {
+        test_case_reference: true,
+        title_snapshot: true,
+        status: true,
+        run: { select: { release_label: true } },
+      },
+    }),
   ]);
 
-  const statusCounts = new Map(statusGroups.map((row) => [row.status, row._count._all]));
-  const severityCounts = new Map(severityGroups.map((row) => [row.severity, row._count._all]));
-  const testCounts = new Map(testGroups.map((row) => [row.status, row._count._all]));
-  const bugsByStatus = issueStatuses.map((status) => ({ key: status, label: labelFor(status), count: statusCounts.get(status) ?? 0 }));
-  const bugsBySeverity = issueSeverities.map((severity) => ({ key: severity, label: labelFor(severity), count: severityCounts.get(severity) ?? 0 }));
-  const testResults = testCaseStatuses.map((status) => ({ key: status, label: labelFor(status), count: testCounts.get(status) ?? 0 }));
-  const totalBugReports = bugsByStatus.reduce((total, item) => total + item.count, 0);
-  const totalTestCases = testResults.reduce((total, item) => total + item.count, 0);
+  const statusCounts = new Map(
+    statusGroups.map((row) => [row.status, row._count._all]),
+  );
+  const severityCounts = new Map(
+    severityGroups.map((row) => [row.severity, row._count._all]),
+  );
+  const testCounts = new Map(
+    testGroups.map((row) => [row.status, row._count._all]),
+  );
+  const bugsByStatus = issueStatuses.map((status) => ({
+    key: status,
+    label: labelFor(status),
+    count: statusCounts.get(status) ?? 0,
+  }));
+  const bugsBySeverity = issueSeverities.map((severity) => ({
+    key: severity,
+    label: labelFor(severity),
+    count: severityCounts.get(severity) ?? 0,
+  }));
+  const testResults = testCaseStatuses.map((status) => ({
+    key: status,
+    label: labelFor(status),
+    count: testCounts.get(status) ?? 0,
+  }));
+  const totalBugReports = bugsByStatus.reduce(
+    (total, item) => total + item.count,
+    0,
+  );
+  const totalTestCases = testResults.reduce(
+    (total, item) => total + item.count,
+    0,
+  );
   const passed = testCounts.get("PASSED") ?? 0;
   const failed = testCounts.get("FAILED") ?? 0;
   const blocked = testCounts.get("BLOCKED") ?? 0;
   const executedTestCases = passed + failed + blocked;
-  const resolvedIssueIds = new Set(resolvedActivities.map((activity) => activity.issue_id));
-  const reopenedIssueIds = new Set(reopenActivities.map((activity) => activity.issue_id));
-  const verifiedReopenedBugs = [...reopenedIssueIds].filter((issueId) => resolvedIssueIds.has(issueId)).length;
-  const areaMap = new Map<string, { failedTests: number; linkedBugIds: Set<number> }>();
-  const executionCounts = new Map(executionGroups.map((row) => [row.status, row._count._all]));
+  const resolvedIssueIds = new Set(
+    resolvedActivities.map((activity) => activity.issue_id),
+  );
+  const reopenedIssueIds = new Set(
+    reopenActivities.map((activity) => activity.issue_id),
+  );
+  const verifiedReopenedBugs = [...reopenedIssueIds].filter((issueId) =>
+    resolvedIssueIds.has(issueId),
+  ).length;
+  const areaMap = new Map<
+    string,
+    { failedTests: number; linkedBugIds: Set<number> }
+  >();
+  const executionCounts = new Map(
+    executionGroups.map((row) => [row.status, row._count._all]),
+  );
   const failureMap = new Map<string, { title: string; failures: number }>();
-  const releaseMap = new Map<string, { passed: number; failed: number; blocked: number }>();
+  const releaseMap = new Map<
+    string,
+    { passed: number; failed: number; blocked: number }
+  >();
 
   for (const execution of executionRows) {
     if (execution.status === "FAILED") {
-      const failure = failureMap.get(execution.test_case_reference) ?? { title: execution.title_snapshot, failures: 0 };
+      const failure = failureMap.get(execution.test_case_reference) ?? {
+        title: execution.title_snapshot,
+        failures: 0,
+      };
       failure.failures += 1;
       failureMap.set(execution.test_case_reference, failure);
     }
-    const release = releaseMap.get(execution.run.release_label) ?? { passed: 0, failed: 0, blocked: 0 };
+    const release = releaseMap.get(execution.run.release_label) ?? {
+      passed: 0,
+      failed: 0,
+      blocked: 0,
+    };
     if (execution.status === "PASSED") release.passed += 1;
     if (execution.status === "FAILED") release.failed += 1;
     if (execution.status === "BLOCKED") release.blocked += 1;
@@ -175,7 +301,10 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
 
   for (const testCase of problemTestCases) {
     const moduleName = testCase.feature_module.trim() || "General";
-    const area = areaMap.get(moduleName) ?? { failedTests: 0, linkedBugIds: new Set<number>() };
+    const area = areaMap.get(moduleName) ?? {
+      failedTests: 0,
+      linkedBugIds: new Set<number>(),
+    };
 
     if (testCase.status === "FAILED") {
       area.failedTests += 1;
@@ -196,7 +325,10 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
     scope: isAdmin(user) ? "all" : isDeveloper(user) ? "developer" : "qa",
     summary: {
       totalBugReports,
-      openBugs: activeIssueStatuses.reduce((total, status) => total + (statusCounts.get(status) ?? 0), 0),
+      openBugs: activeIssueStatuses.reduce(
+        (total, status) => total + (statusCounts.get(status) ?? 0),
+        0,
+      ),
       criticalBugs: severityCounts.get("CRITICAL") ?? 0,
       reopenedBugs: statusCounts.get("REOPENED") ?? 0,
       resolvedBugs: statusCounts.get("RESOLVED") ?? 0,
@@ -205,8 +337,10 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
       unassignedBugs,
       totalTestCases,
       failedTestCases: failed,
-      testPassRate: executedTestCases ? Math.round((passed / executedTestCases) * 1000) / 10 : 0,
-      executedTestCases
+      testPassRate: executedTestCases
+        ? Math.round((passed / executedTestCases) * 1000) / 10
+        : 0,
+      executedTestCases,
     },
     bugsByStatus,
     bugsBySeverity,
@@ -216,10 +350,14 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
       recordedReopenEvents: reopenActivities.length,
       recordedResolvedBugs: resolvedIssueIds.size,
       verifiedReopenedBugs,
-      recordedReopenRate: resolvedIssueIds.size ? Math.round((verifiedReopenedBugs / resolvedIssueIds.size) * 1000) / 10 : null
+      recordedReopenRate: resolvedIssueIds.size
+        ? Math.round((verifiedReopenedBugs / resolvedIssueIds.size) * 1000) / 10
+        : null,
     },
     developerWorkload: developers.map((developer) => {
-      const counts = Object.fromEntries(activeIssueStatuses.map((status) => [status, 0])) as Record<string, number>;
+      const counts = Object.fromEntries(
+        activeIssueStatuses.map((status) => [status, 0]),
+      ) as Record<string, number>;
 
       for (const issue of developer.assignedIssues) {
         counts[issue.status] = (counts[issue.status] ?? 0) + 1;
@@ -229,7 +367,7 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
         id: developer.id,
         username: developer.username,
         counts,
-        totalActive: developer.assignedIssues.length
+        totalActive: developer.assignedIssues.length,
       };
     }),
     recentActivity: recentActivity.map((activity) => ({
@@ -238,20 +376,58 @@ export async function getAnalyticsData(user: AnalyticsUser): Promise<AnalyticsDa
       message: activity.message,
       createdAt: activity.created_at,
       actor: activity.actor,
-      issue: activity.issue
+      issue: activity.issue,
     })),
     problemAreas: [...areaMap.entries()]
-      .map(([module, area]) => ({ module, failedTests: area.failedTests, linkedBugReports: area.linkedBugIds.size }))
+      .map(([module, area]) => ({
+        module,
+        failedTests: area.failedTests,
+        linkedBugReports: area.linkedBugIds.size,
+      }))
       .filter((area) => area.failedTests > 0 || area.linkedBugReports > 0)
-      .sort((left, right) => right.failedTests - left.failedTests || right.linkedBugReports - left.linkedBugReports || left.module.localeCompare(right.module))
+      .sort(
+        (left, right) =>
+          right.failedTests - left.failedTests ||
+          right.linkedBugReports - left.linkedBugReports ||
+          left.module.localeCompare(right.module),
+      )
       .slice(0, 6),
     executionAnalytics: {
-      totalExecutions: [...executionCounts.values()].reduce((total, count) => total + count, 0),
-      executed: (executionCounts.get("PASSED") ?? 0) + (executionCounts.get("FAILED") ?? 0) + (executionCounts.get("BLOCKED") ?? 0),
-      passRate: ((executionCounts.get("PASSED") ?? 0) + (executionCounts.get("FAILED") ?? 0) + (executionCounts.get("BLOCKED") ?? 0)) ? Math.round(((executionCounts.get("PASSED") ?? 0) / ((executionCounts.get("PASSED") ?? 0) + (executionCounts.get("FAILED") ?? 0) + (executionCounts.get("BLOCKED") ?? 0))) * 1000) / 10 : 0,
-      resultDistribution: testCaseStatuses.map((status) => ({ key: status, label: labelFor(status), count: executionCounts.get(status) ?? 0 })),
-      frequentFailures: [...failureMap.entries()].map(([reference, item]) => ({ reference, ...item })).sort((a, b) => b.failures - a.failures || a.reference.localeCompare(b.reference)).slice(0, 5),
-      releaseResults: [...releaseMap.entries()].map(([release, counts]) => ({ release, ...counts })).slice(0, 8)
-    }
+      totalExecutions: [...executionCounts.values()].reduce(
+        (total, count) => total + count,
+        0,
+      ),
+      executed:
+        (executionCounts.get("PASSED") ?? 0) +
+        (executionCounts.get("FAILED") ?? 0) +
+        (executionCounts.get("BLOCKED") ?? 0),
+      passRate:
+        (executionCounts.get("PASSED") ?? 0) +
+        (executionCounts.get("FAILED") ?? 0) +
+        (executionCounts.get("BLOCKED") ?? 0)
+          ? Math.round(
+              ((executionCounts.get("PASSED") ?? 0) /
+                ((executionCounts.get("PASSED") ?? 0) +
+                  (executionCounts.get("FAILED") ?? 0) +
+                  (executionCounts.get("BLOCKED") ?? 0))) *
+                1000,
+            ) / 10
+          : 0,
+      resultDistribution: testCaseStatuses.map((status) => ({
+        key: status,
+        label: labelFor(status),
+        count: executionCounts.get(status) ?? 0,
+      })),
+      frequentFailures: [...failureMap.entries()]
+        .map(([reference, item]) => ({ reference, ...item }))
+        .sort(
+          (a, b) =>
+            b.failures - a.failures || a.reference.localeCompare(b.reference),
+        )
+        .slice(0, 5),
+      releaseResults: [...releaseMap.entries()]
+        .map(([release, counts]) => ({ release, ...counts }))
+        .slice(0, 8),
+    },
   };
 }

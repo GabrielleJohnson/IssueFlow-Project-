@@ -15,6 +15,12 @@ test("Admin role changes require confirmation and cancel keeps the saved role", 
   const dialog = page.getByRole("dialog", { name: `Change ${E2E_USERS.roleTarget.username}'s role?` });
   await expect(dialog).toContainText("Tester");
   await expect(dialog).toContainText("Developer");
+  await expect(dialog.getByRole("button", { name: "Cancel" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(roleSelect).toHaveValue("TESTER");
+
+  await roleSelect.selectOption("DEVELOPER");
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(roleSelect).toHaveValue("TESTER");
 

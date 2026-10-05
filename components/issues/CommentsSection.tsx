@@ -92,7 +92,7 @@ export function CommentsSection({ issueId }: { issueId: number }) {
           <button type="submit" disabled={isPosting} className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso transition hover:bg-amber disabled:cursor-not-allowed disabled:opacity-65">
             {isPosting ? "Posting..." : "Add Comment"}
           </button>
-          {error && <p className="text-sm font-semibold text-[#ff9aa2]">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-[#ff9aa2]">{error}</p>}
         </div>
       </form>
 
