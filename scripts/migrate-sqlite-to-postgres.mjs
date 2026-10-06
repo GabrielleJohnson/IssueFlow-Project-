@@ -62,7 +62,9 @@ try {
       const rows = sourceRows(table).map(normalizeRow);
       const importRows = table === "test_cases"
         ? rows.map((row) => ({ ...row, linked_issue_id: null }))
-        : rows;
+        : table === "attachments"
+          ? rows.map(({ filepath, ...row }) => ({ ...row, object_key: filepath }))
+          : rows;
       if (importRows.length) await tx[delegate].createMany({ data: importRows });
     }
 

@@ -2,7 +2,6 @@
   id: number;
   filename: string;
   original_name: string;
-  filepath: string;
   mimetype: string;
   filesize: number;
   uploaded_by: number;

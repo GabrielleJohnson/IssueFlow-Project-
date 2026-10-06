@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import type { AttachmentRecord } from "@/lib/attachmentTypes";
+import { uploadEvidenceFiles } from "@/lib/clientEvidenceUpload";
 import { canDeleteEvidence } from "@/lib/permissions";
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
@@ -44,6 +45,7 @@ export function EvidenceSection({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -111,28 +113,20 @@ export function EvidenceSection({
     }
 
     setIsUploading(true);
+    setUploadProgress(0);
     setError("");
     setMessage("");
 
-    const formData = new FormData();
-    selectedFiles.forEach((file) => formData.append("files", file));
-
-    const response = await fetch(`/api/issues/${issueId}/attachments`, {
-      method: "POST",
-      body: formData,
-    });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      setError(data.error ?? "Unable to upload evidence files.");
+    try {
+      const attachments = await uploadEvidenceFiles(issueId, selectedFiles, (completed) => setUploadProgress(completed));
+      setAttachments((current) => [...attachments, ...current]);
+      setSelectedFiles([]);
+      setMessage("Evidence uploaded successfully.");
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Unable to upload evidence files.");
+    } finally {
       setIsUploading(false);
-      return;
     }
-
-    setAttachments((current) => [...(data.attachments ?? []), ...current]);
-    setSelectedFiles([]);
-    setMessage("Evidence uploaded successfully.");
-    setIsUploading(false);
   }
 
   async function handleDelete(attachmentId: number) {
@@ -201,7 +195,7 @@ export function EvidenceSection({
               disabled={isUploading || selectedFiles.length === 0}
               className="rounded-full bg-coral px-5 py-3 text-sm font-bold text-espresso transition hover:bg-amber disabled:cursor-not-allowed disabled:opacity-65"
             >
-              {isUploading ? "Uploading evidence..." : "Upload Evidence"}
+              {isUploading ? `Uploading ${uploadProgress}/${selectedFiles.length}...` : "Upload Evidence"}
             </button>
             <p className="text-xs text-beige">
               Supported: PNG, JPG, JPEG, GIF, PDF. Max 10MB each.

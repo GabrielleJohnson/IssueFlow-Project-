@@ -28,6 +28,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/issueflow?schema=public
       DATABASE_URL_POOLED: postgresql://postgres:postgres@127.0.0.1:5432/issueflow?schema=public
       AUTH_SECRET: issueflow-ci-build-only-secret
+      EVIDENCE_STORAGE_DRIVER: memory
+      EVIDENCE_STORAGE_TEST_MODE: "true"
 
     steps:
       - name: Check out repository

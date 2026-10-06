@@ -9,6 +9,8 @@ import {
 process.env.DATABASE_URL = E2E_DATABASE_URL;
 process.env.DATABASE_URL_POOLED = E2E_DATABASE_URL_POOLED;
 process.env.AUTH_SECRET = E2E_AUTH_SECRET;
+process.env.EVIDENCE_STORAGE_DRIVER = "memory";
+process.env.EVIDENCE_STORAGE_TEST_MODE = "true";
 const localChromiumPath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 
 export default defineConfig({
@@ -39,7 +41,9 @@ export default defineConfig({
     env: {
       DATABASE_URL: E2E_DATABASE_URL,
       DATABASE_URL_POOLED: E2E_DATABASE_URL_POOLED,
-      AUTH_SECRET: E2E_AUTH_SECRET
+      AUTH_SECRET: E2E_AUTH_SECRET,
+      EVIDENCE_STORAGE_DRIVER: "memory",
+      EVIDENCE_STORAGE_TEST_MODE: "true"
     }
   },
   projects: [

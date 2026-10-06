@@ -1,10 +1,11 @@
 const { resetTestDatabase } = await import("./lib/postgres-test-database.mjs");
 await resetTestDatabase("issueflow_smoke_v07");
 process.env.AUTH_SECRET = "issueflow-local-dev-secret-change-before-production";
+process.env.EVIDENCE_STORAGE_DRIVER = "memory";
+process.env.EVIDENCE_STORAGE_TEST_MODE = "true";
 
 const { spawn } = await import("node:child_process");
-const { unlink } = await import("node:fs/promises");
-const { join } = await import("node:path");
+const { PNG_BYTES, uploadEvidence } = await import("./lib/evidence-upload.mjs");
 const { PrismaClient } = await import("@prisma/client");
 const bcrypt = await import("bcryptjs");
 
@@ -17,7 +18,6 @@ const testCaseIds = [];
 const issueIds = [];
 const suiteIds = [];
 const runIds = [];
-const attachmentFiles = [];
 let server;
 
 function assert(condition, message) {
@@ -231,10 +231,7 @@ try {
   issueIds.push(legacyBug.data.issue.id);
 
   const comment = await api(`/api/issues/${lifecycleIssue.data.issue.id}/comments`, testerCookie, { method: "POST", body: JSON.stringify({ content: `v0.7 collaboration regression ${stamp}` }) });
-  const evidence = new FormData();
-  evidence.append("files", new File([new Uint8Array([137, 80, 78, 71])], `v07-evidence-${stamp}.png`, { type: "image/png" }));
-  const upload = await api(`/api/issues/${lifecycleIssue.data.issue.id}/attachments`, testerCookie, { method: "POST", body: evidence });
-  if (upload.response.status === 201) attachmentFiles.push(upload.data.attachments[0].filepath);
+  const upload = await uploadEvidence({ baseUrl, issueId: lifecycleIssue.data.issue.id, cookie: testerCookie, name: `v07-evidence-${stamp}.png`, type: "image/png", bytes: PNG_BYTES });
   const activity = await api(`/api/issues/${lifecycleIssue.data.issue.id}/activity`, testerCookie);
   assert(comment.response.status === 201 && upload.response.status === 201, "S. Existing comments/evidence behavior failed.");
   assert(activity.data.activity.some((entry) => entry.action_type === "COMMENT_ADDED") && activity.data.activity.some((entry) => entry.action_type === "EVIDENCE_UPLOADED") && activity.data.activity.some((entry) => entry.action_type === "STATUS_CHANGED"), "S. Existing activity history omitted regression events.");
@@ -270,6 +267,5 @@ try {
   if (suiteIds.length) await prisma.testSuite.deleteMany({ where: { id: { in: suiteIds } } }).catch(() => null);
   if (testCaseIds.length) await prisma.testCase.deleteMany({ where: { id: { in: testCaseIds } } }).catch(() => null);
   if (userIds.length) await prisma.user.deleteMany({ where: { id: { in: userIds } } }).catch(() => null);
-  for (const filepath of attachmentFiles) await unlink(join(process.cwd(), filepath)).catch(() => null);
   await prisma.$disconnect();
 }

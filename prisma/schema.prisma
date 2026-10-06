@@ -239,7 +239,7 @@ model Attachment {
   id            Int      @id @default(autoincrement())
   filename      String
   original_name String
-  filepath      String
+  object_key    String   @unique @map("filepath")
   mimetype      String
   filesize      Int
   uploaded_by   Int

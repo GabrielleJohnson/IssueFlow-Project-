@@ -11,7 +11,7 @@ IssueFlow keeps that context connected. Testers can document expected behavior, 
 ## Key Features
 
 - **Bug Reports:** Record reproduction details, assignment, severity, comments, and lifecycle changes.
-- **Evidence uploads:** Attach screenshots, images, GIFs, and PDFs to defects.
+- **Evidence uploads:** Attach private screenshots, images, GIFs, and PDFs to defects through secure direct uploads.
 - **Test Cases and Test Suites:** Maintain reusable QA scenarios and organize them into regression suites.
 - **Test Runs:** Execute suite snapshots while preserving historical results when Test Cases change later.
 - **Failure traceability:** Create a Bug Report from a failed execution and follow its origin back to the test and run.
@@ -27,11 +27,13 @@ IssueFlow keeps that context connected. Testers can document expected behavior, 
 - Next.js 16 and React 19
 - TypeScript
 - Tailwind CSS
-- Prisma with PostgreSQL
+- Prisma with PostgreSQL on Neon
+- Neon Object Storage for private defect evidence
 - bcryptjs and jose for local authentication
 - GSAP for landing-page animations
 - Playwright for end-to-end testing
 - GitHub Actions for automated validation
+- Vercel as the deployment target
 
 ## How IssueFlow Works
 
@@ -78,7 +80,7 @@ Manual QA was also part of development, especially for responsive layouts, keybo
 
 ## Quick Start
 
-Requirements: Node.js 22.13 or newer, npm, and a PostgreSQL database. Set `DATABASE_URL` to the direct connection URL and `DATABASE_URL_POOLED` to the pooled application URL.
+Requirements: Node.js 22.13 or newer, npm, PostgreSQL, and a private S3-compatible evidence bucket. Set `DATABASE_URL` to the direct connection URL and `DATABASE_URL_POOLED` to the pooled application URL. Neon Object Storage uses its native `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_REGION` variables; IssueFlow additionally requires `EVIDENCE_STORAGE_BUCKET`.
 
 ```powershell
 npm.cmd install
@@ -105,4 +107,4 @@ One of my biggest takeaways was that passing automated tests does not always mea
 
 ## Project Status
 
-IssueFlow is currently designed as a local portfolio application rather than a production deployment.
+IssueFlow v1.0.0 is a portfolio application being prepared for deployment to Vercel.

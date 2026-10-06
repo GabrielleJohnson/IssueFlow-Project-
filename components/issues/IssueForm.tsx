@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { uploadEvidenceFiles } from "@/lib/clientEvidenceUpload";
 import { formatEnumLabel, issueSeverities, issueStatuses } from "@/lib/issueOptions";
 import type { IssueRecord, IssueUser, TestCaseRecord } from "@/lib/issueTypes";
 
@@ -69,17 +70,11 @@ export function IssueForm({ mode, issue, users, testCases, prefill, statusOnly =
       return true;
     }
 
-    const evidenceData = new FormData();
-    selectedFiles.forEach((file) => evidenceData.append("files", file));
-
-    const response = await fetch(`/api/issues/${issueId}/attachments`, {
-      method: "POST",
-      body: evidenceData
-    });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      setError(data.error ?? "The bug report was saved, but evidence upload failed. You can add evidence from the detail page.");
+    try {
+      await uploadEvidenceFiles(issueId, selectedFiles);
+    } catch (uploadError) {
+      const detail = uploadError instanceof Error ? uploadError.message : "Evidence upload failed.";
+      setError(`The bug report was saved, but evidence upload failed: ${detail} You can add evidence from the detail page.`);
       return false;
     }
 

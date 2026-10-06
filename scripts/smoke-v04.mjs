@@ -1,9 +1,10 @@
 const { execFileSync, spawn } = await import("node:child_process");
-const { writeFile, mkdir, readFile, rm } = await import("node:fs/promises");
-const { join } = await import("node:path");
 const { resetTestDatabase } = await import("./lib/postgres-test-database.mjs");
+const { PNG_BYTES, uploadEvidence } = await import("./lib/evidence-upload.mjs");
 
 process.env.AUTH_SECRET = "issueflow-local-development-secret";
+process.env.EVIDENCE_STORAGE_DRIVER = "memory";
+process.env.EVIDENCE_STORAGE_TEST_MODE = "true";
 await resetTestDatabase("issueflow_smoke_v04");
 
 const { PrismaClient } = await import("@prisma/client");
@@ -13,7 +14,6 @@ const prisma = new PrismaClient();
 const baseUrl = "http://127.0.0.1:3210";
 const stamp = Date.now();
 let server;
-let pngPath;
 
 try {
 const users = {
@@ -166,13 +166,9 @@ let developerAssign = await request("PATCH", `/api/issues/${issueId}`, devBCooki
 });
 assert(developerAssign.response.status === 403, "Developer assignment change was not forbidden.");
 
-await mkdir(join(process.cwd(), "uploads", "issues", String(issueId)), { recursive: true });
-pngPath = join(process.cwd(), "uploads", "issues", String(issueId), `smoke-${stamp}.png`);
-await writeFile(pngPath, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lA1xNAAAAABJRU5ErkJggg==", "base64"));
-const form = new FormData();
-form.append("files", new Blob([await readFile(pngPath)], { type: "image/png" }), `smoke-${stamp}.png`);
-const uploadResponse = await fetch(`${baseUrl}/api/issues/${issueId}/attachments`, { method: "POST", headers: { Cookie: testerCookie }, body: form });
-const uploadData = await uploadResponse.json().catch(() => ({}));
+const uploaded = await uploadEvidence({ baseUrl, issueId, cookie: testerCookie, name: `smoke-${stamp}.png`, type: "image/png", bytes: PNG_BYTES });
+const uploadResponse = uploaded.response;
+const uploadData = uploaded.data;
 assert(uploadResponse.status === 201, `Evidence upload failed: ${uploadResponse.status} ${JSON.stringify(uploadData)}`);
 const attachmentId = uploadData.attachments[0].id;
 const deleteEvidence = await fetch(`${baseUrl}/api/attachments/${attachmentId}`, { method: "DELETE", headers: { Cookie: testerCookie } });
@@ -212,8 +208,6 @@ console.log(JSON.stringify({
   }
 
   await prisma.$disconnect();
-  if (pngPath) await rm(pngPath, { force: true });
-
   await resetTestDatabase("issueflow_smoke_v04");
 }
 
