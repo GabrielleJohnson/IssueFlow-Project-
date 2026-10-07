@@ -103,8 +103,36 @@ test("Requirements trace to tests and drive deterministic Release readiness and 
   expect(csv).toContain("\"LOW; MEDIUM\"");
   expect(csv).toContain("\"CLOSED; OPEN\"");
 
+  await prisma.issue.update({ where: { id: openDefect.id }, data: { status: "CLOSED" } });
+
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
+    await page.goto(`/dashboard/requirements?q=${encodeURIComponent(stamp)}`);
+    const requirementCard = page.locator(`a[href^="/dashboard/requirements/${requirementId}"]`);
+    const passingBadge = requirementCard.getByText("Passing", { exact: true });
+    const requirementReadyBadge = requirementCard.getByText("Ready", { exact: true });
+    for (const badge of [passingBadge, requirementReadyBadge]) {
+      await expect(badge).toBeVisible();
+      expect(await badge.evaluate((element) => {
+        const badgeRect = element.getBoundingClientRect();
+        const cardRect = element.closest("a")!.getBoundingClientRect();
+        return badgeRect.width < cardRect.width / 2;
+      })).toBe(true);
+    }
+
+    await page.goto(`/dashboard/releases?q=${encodeURIComponent(stamp)}`);
+    const releaseCard = page.locator(`a[href="/dashboard/releases/${releaseId}"]`);
+    const releaseReadyBadge = releaseCard.getByText("Ready", { exact: true });
+    const inTestingBadge = releaseCard.getByText("In Testing", { exact: true });
+    for (const badge of [releaseReadyBadge, inTestingBadge]) {
+      await expect(badge).toBeVisible();
+      expect(await badge.evaluate((element) => {
+        const badgeRect = element.getBoundingClientRect();
+        const cardRect = element.closest("a")!.getBoundingClientRect();
+        return badgeRect.width < cardRect.width / 2;
+      })).toBe(true);
+    }
+
     await page.goto(`/dashboard/releases/${releaseId}`);
     await expect(page.getByRole("heading", { name: releaseName })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);

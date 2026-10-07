@@ -1,10 +1,12 @@
 ﻿import { hash } from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
+import { isValidRegistrationEmail, normalizeEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
+function duplicateEmailResponse() {
+  return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
 }
 
 export async function POST(request: NextRequest) {
@@ -17,7 +19,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Username, email, and password are required." }, { status: 400 });
   }
 
-  if (!email.includes("@")) {
+  if (!isValidRegistrationEmail(email)) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   }
 
@@ -28,22 +30,30 @@ export async function POST(request: NextRequest) {
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser) {
-    return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
+    return duplicateEmailResponse();
   }
 
   const password_hash = await hash(password, 12);
-  const user = await prisma.user.create({
-    data: {
-      username,
-      email,
-      password_hash
-    },
-    select: {
-      id: true,
-      username: true,
-      email: true
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: {
+        username,
+        email,
+        password_hash
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true
+      }
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return duplicateEmailResponse();
     }
-  });
+    throw error;
+  }
 
   const token = await createSessionToken({ userId: user.id, email: user.email });
   await setSessionCookie(token);

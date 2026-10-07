@@ -49,7 +49,7 @@ const styles: Record<string, string> = {
 
 export function Badge({ label }: BadgeProps) {
   return (
-    <span className={`inline-flex whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold ${styles[label] ?? "border-bronze bg-espresso/80 text-beige"}`}>
+    <span className={`inline-flex w-fit self-start whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold ${styles[label] ?? "border-bronze bg-espresso/80 text-beige"}`}>
       {label.includes("_") || label === label.toUpperCase() ? formatEnumLabel(label) : label}
     </span>
   );

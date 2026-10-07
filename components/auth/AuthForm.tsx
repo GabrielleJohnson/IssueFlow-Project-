@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, InvalidEvent, useState } from "react";
+import { isValidRegistrationEmail, normalizeEmail } from "@/lib/email";
 
 type AuthFormProps = {
   mode: "login" | "register";
@@ -20,11 +21,18 @@ export function AuthForm({ mode }: AuthFormProps) {
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
+    const submittedEmail = String(formData.get("email") ?? "");
     const payload = {
       username: String(formData.get("username") ?? ""),
-      email: String(formData.get("email") ?? ""),
+      email: isRegister ? normalizeEmail(submittedEmail) : submittedEmail,
       password: String(formData.get("password") ?? "")
     };
+
+    if (isRegister && !isValidRegistrationEmail(submittedEmail)) {
+      setError("Enter a valid email address.");
+      setIsSubmitting(false);
+      return;
+    }
 
     const response = await fetch(`/api/auth/${mode}`, {
       method: "POST",
@@ -42,6 +50,12 @@ export function AuthForm({ mode }: AuthFormProps) {
 
     router.push("/dashboard");
     router.refresh();
+  }
+
+  function handleInvalidEmail(event: InvalidEvent<HTMLInputElement>) {
+    if (!isRegister) return;
+    event.preventDefault();
+    setError("Enter a valid email address.");
   }
 
   return (
@@ -67,7 +81,15 @@ export function AuthForm({ mode }: AuthFormProps) {
         )}
         <label>
           <span className="mb-2 block text-sm font-semibold text-beige">Email</span>
-          <input className="field" name="email" type="email" placeholder="you@example.com" autoComplete="email" required />
+          <input
+            className="field"
+            name="email"
+            type="email"
+            placeholder="you@example.com"
+            autoComplete="email"
+            onInvalid={handleInvalidEmail}
+            required
+          />
         </label>
         <label>
           <span className="mb-2 block text-sm font-semibold text-beige">Password</span>
