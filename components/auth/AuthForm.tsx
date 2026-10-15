@@ -65,18 +65,18 @@ export function AuthForm({ mode }: AuthFormProps) {
         <h1 className="mt-3 font-display text-3xl font-semibold text-ivory sm:text-4xl">
           {isRegister ? "Start tracking QA signals." : "Log in to IssueFlow."}
         </h1>
-        <p className="mt-3 text-sm leading-6 text-beige">
-          {isRegister
-            ? "Create a local account for the protected dashboard and defect workflow."
-            : "Access the protected dashboard, test cases, and issue reporting workspace."}
-        </p>
+        {!isRegister && (
+          <p className="mt-3 text-sm leading-6 text-beige">
+            Access the protected dashboard, test cases, and issue reporting workspace.
+          </p>
+        )}
       </div>
 
       <div className="mt-7 grid gap-4">
         {isRegister && (
           <label>
             <span className="mb-2 block text-sm font-semibold text-beige">Username</span>
-            <input className="field" name="username" placeholder="Gabrielle QA" autoComplete="username" required />
+            <input className="field" name="username" placeholder="Jane Doe" autoComplete="username" required />
           </label>
         )}
         <label>
